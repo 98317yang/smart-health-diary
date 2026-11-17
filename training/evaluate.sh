@@ -7,7 +7,7 @@
 #
 # 會依序評估：
 #   1. test_single：單一菜色測試集（與訓練集不重疊）
-#   2. test_tray：整盤測試集（補齊標註並改名為 test_tray 後才會評估）
+#   2. test_tray_holdout：整盤測試集中保留、未參與訓練的 30 張
 set -euo pipefail
 
 W="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
@@ -21,19 +21,19 @@ echo "=== 單一菜色測試集（test_single）==="
 python val.py --data "$FG/foodgroups.yaml" --weights "$W" --img 640 --task test \
   --device "$DEVICE" --name eval_test_single --exist-ok
 
-if [ -d "$FG/test_tray" ]; then
-  cat > "$FG/test_tray.yaml" <<EOF
+if [ -d "$FG/test_tray_holdout" ]; then
+  cat > "$FG/test_tray_holdout.yaml" <<EOF
 path: ../../training/foodgroups
 train: train/images
-val: test_tray/images
+val: test_tray_holdout/images
 nc: 3
 names: ['grains_starches', 'vegetables', 'protein']
 EOF
   echo
-  echo "=== 整盤測試集（test_tray）==="
-  python val.py --data "$FG/test_tray.yaml" --weights "$W" --img 640 --task val \
+  echo "=== 整盤測試集（test_tray_holdout，30 張、未參與訓練）==="
+  python val.py --data "$FG/test_tray_holdout.yaml" --weights "$W" --img 640 --task val \
     --device "$DEVICE" --name eval_test_tray --exist-ok
 else
   echo
-  echo "（尚未找到 training/foodgroups/test_tray，整盤測試集補標完成後再評估）"
+  echo "（尚未找到 training/foodgroups/test_tray_holdout，整盤測試集補標完成後再評估）"
 fi
