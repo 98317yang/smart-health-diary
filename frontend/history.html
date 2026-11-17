@@ -115,12 +115,13 @@
             <li><a href="history.html">歷史資料</a></li>
             <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
               <ul>
-                <li><a href="assets/pdf/801.pdf">認識糖尿病</a></li>               
-                <li><a href="assets/pdf/802.pdf">糖尿病病人之運動</a></li>
-                <li><a href="assets/pdf/803.pdf">糖尿病患之足部照護</a></li>
-                <li><a href="assets/pdf/804.pdf">糖尿病之自我監測血糖</a></li>
-                <li><a href="assets/pdf/805.pdf">糖尿病之低血糖處理</a></li>
-              </ul>
+                <li><span class="handout-offline">認識糖尿病</span></li>
+                <li><span class="handout-offline">糖尿病病人之運動</span></li>
+                <li><span class="handout-offline">糖尿病患之足部照護</span></li>
+                <li><span class="handout-offline">糖尿病之自我監測血糖</span></li>
+                <li><span class="handout-offline">糖尿病之低血糖處理</span></li>
+                <li><span class="handout-note">單張由合作醫院提供，未隨程式碼公開</span></li>
+                </ul>
             </li>
             <li class="dropdown"><a><span>相關網站</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
               <ul>
@@ -161,6 +162,11 @@
     <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
       <canvas id="exercisePieChart2" style="max-width: 400px; max-height: 400px;"></canvas>
       <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 每日三碗蔬菜，守護血糖更有力！”</p>
+    </div>
+
+    <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
+      <canvas id="carbsChart" style="max-width: 600px; max-height: 400px;"></canvas>
+      <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 醣類吃得剛剛好，血糖跟著穩穩走 ”</p>
     </div>
 
     <div class="form-section">
@@ -227,14 +233,34 @@
         });
       }
 
+      function carbsChart(data) {
+        new Chart(document.getElementById('carbsChart').getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: data.dates.map(shortDate),
+            datasets: [{ label: '每日醣類 (公克)', data: data.carbs_g, backgroundColor: 'rgba(255, 159, 64, 0.6)' }]
+          },
+          options: {
+            responsive: true,
+            plugins: { title: { display: true, text: '近 7 日醣類攝取（有拍照記錄的餐點）', color: '#555', font: { size: 22 } } },
+            scales: { y: { beginAtZero: true, title: { display: true, text: '醣類 (公克)' } } }
+          }
+        });
+      }
+
       function recentMeals(rows) {
         const box = document.getElementById('recentMeals');
         if (rows.length === 0) { box.textContent = '最近 7 天還沒有上傳餐點照片。'; return; }
         box.classList.remove('text-muted');
-        box.innerHTML = '<table class="table table-sm"><thead><tr><th>日期</th><th>餐別</th><th>辨識菜色</th><th>推估熱量</th></tr></thead><tbody>' +
+        const fmt = v => v === null || v === undefined ? '—' : `${Math.round(v * 10) / 10} 份`;
+        box.innerHTML = '<table class="table table-sm"><thead><tr><th>日期</th><th>餐別</th>' +
+          '<th>全穀雜糧</th><th>蔬菜</th><th>豆魚蛋肉</th><th>醣類</th><th>熱量</th></tr></thead><tbody>' +
           rows.map(r => `<tr><td>${escapeHtml(r.log_date)}</td><td>${escapeHtml(r.meal_type || '')}</td>` +
-            `<td>${escapeHtml(r.dishes || '未辨識到菜色')}</td><td>${r.total_kcal === null ? '尚無資料' : r.total_kcal + ' 大卡'}</td></tr>`).join('') +
-          '</tbody></table>';
+            `<td>${fmt(r.grain_servings)}</td><td>${fmt(r.veg_servings)}</td><td>${fmt(r.protein_servings)}</td>` +
+            `<td>${r.carbs_g === null ? '—' : Math.round(r.carbs_g) + ' g'}</td>` +
+            `<td>${r.total_kcal === null ? '—' : Math.round(r.total_kcal) + ' 大卡'}</td></tr>`).join('') +
+          '</tbody></table>' +
+          '<p class="text-muted" style="font-size: 13px;">份數由使用者確認；醣類與熱量依國民健康署食物代換表換算。</p>';
       }
 
       requireLogin()
@@ -244,6 +270,7 @@
           if (typeof Chart === 'undefined') return;  // 圖表套件載入失敗時，至少顯示表格
           pieChart('exercisePieChart', '近 7 日運動 30 分鐘達成情形', data.exercise);
           lineChart(data);
+          carbsChart(data);
           pieChart('exercisePieChart2', '近 7 日三碗蔬菜達成情形', data.veggie);
         })
         .catch(err => { if (err.status !== 401) alert(err.message); });

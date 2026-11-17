@@ -1968,3 +1968,24 @@ section,
 .starter-section {
   /* Add your styles here */
 }
+/*--------------------------------------------------------------
+# 衛教單張（原始 PDF 為合作醫院提供，未隨程式碼公開）
+--------------------------------------------------------------*/
+.navmenu .dropdown ul .handout-offline,
+.navmenu .dropdown ul .handout-note {
+  display: block;
+  padding: 10px 20px;
+  font-size: 15px;
+  color: color-mix(in srgb, var(--nav-dropdown-color), transparent 35%);
+  cursor: default;
+}
+
+.navmenu .dropdown ul .handout-note {
+  padding-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--nav-dropdown-color), transparent 55%);
+  border-top: 1px solid color-mix(in srgb, var(--nav-dropdown-color), transparent 85%);
+  margin-top: 6px;
+  white-space: normal;
+}

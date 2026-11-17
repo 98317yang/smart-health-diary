@@ -101,11 +101,12 @@
             <li><a href="history.html">歷史資料</a></li>
               <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
                 <ul>
-                  <li><a href="assets/pdf/801.pdf">認識糖尿病</a></li>               
-                  <li><a href="assets/pdf/802.pdf">糖尿病病人之運動</a></li>
-                  <li><a href="assets/pdf/803.pdf">糖尿病患之足部照護</a></li>
-                  <li><a href="assets/pdf/804.pdf">糖尿病之自我監測血糖</a></li>
-                  <li><a href="assets/pdf/805.pdf">糖尿病之低血糖處理</a></li>
+                  <li><span class="handout-offline">認識糖尿病</span></li>
+                  <li><span class="handout-offline">糖尿病病人之運動</span></li>
+                  <li><span class="handout-offline">糖尿病患之足部照護</span></li>
+                  <li><span class="handout-offline">糖尿病之自我監測血糖</span></li>
+                  <li><span class="handout-offline">糖尿病之低血糖處理</span></li>
+                  <li><span class="handout-note">單張由合作醫院提供，未隨程式碼公開</span></li>
                 </ul>
               </li>
               <li class="dropdown"><a><span>相關網站</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
@@ -220,30 +221,66 @@
       else { img.style.display = 'none'; }
     });
 
+    let currentLogId = null;
+    let currentGroups = [];
+
+    function calcPreview() {
+      const total = { carbs_g: 0, kcal: 0 };
+      for (const g of currentGroups) {
+        const v = parseFloat(document.getElementById(`sv-${g.group}`).value) || 0;
+        total.carbs_g += g.per_serving.carbs_g * v;
+        total.kcal += g.per_serving.kcal * v;
+      }
+      document.getElementById('nutritionSummary').innerHTML =
+        `這餐約含 <strong>醣類 ${Math.round(total.carbs_g)} 公克</strong>、熱量約 ${Math.round(total.kcal)} 大卡`;
+    }
+
     function renderResult(data) {
+      currentLogId = data.log_id;
+      currentGroups = data.groups || [];
       let html = '<h5 style="font-weight: bold;">已儲存今日紀錄 ✅</h5>';
-      if (data.calories) {
-        if (data.calories.dishes.length === 0) {
-          html += '<p>照片中沒有辨識到系統支援的菜色。</p>';
+      if (data.nutrition) {
+        if (currentGroups.length === 0) {
+          html += '<p>照片中沒有辨識到食物。可以換個角度、讓整個餐盤入鏡後再拍一次。</p>';
         } else {
-          html += '<table class="table table-sm"><thead><tr><th>菜色</th><th>份數</th><th>推估熱量</th></tr></thead><tbody>';
-          for (const d of data.calories.dishes) {
-            html += `<tr><td>${escapeHtml(d.label_zh)}</td><td>${d.servings}</td>` +
-                    `<td>${d.kcal === null ? '尚無資料' : d.kcal + ' 大卡'}</td></tr>`;
+          html += '<p>系統辨識到以下食物類別。<strong>請依實際吃的量調整份數</strong>，再按「確認份量」。</p>';
+          html += '<table class="table table-sm align-middle"><thead><tr><th>食物類別</th><th>辨識到</th><th style="width:120px">份數</th></tr></thead><tbody>';
+          for (const g of currentGroups) {
+            html += `<tr><td>${escapeHtml(g.group_zh)}<div class="text-muted" style="font-size:12px">${escapeHtml(g.serving_hint)}</div></td>` +
+                    `<td>${g.dishes} 處</td>` +
+                    `<td><input type="number" class="form-control form-control-sm" id="sv-${g.group}" min="0" max="20" step="0.5" value="${g.servings}"></td></tr>`;
           }
           html += '</tbody></table>';
-          const allUnknown = data.calories.dishes.every(d => d.kcal === null);
-          html += allUnknown
-            ? '<p><strong>總熱量：這些菜色尚無熱量資料</strong></p>'
-            : `<p><strong>總熱量：約 ${data.calories.total_kcal} 大卡</strong>` +
-              (data.calories.incomplete ? '（部分菜色尚無熱量資料，未計入）' : '') + '</p>';
-          html += '<p class="text-muted" style="font-size: 13px;">※ 熱量以每道菜「標準一份」推估，並非由照片估算實際份量。</p>';
+          html += '<p id="nutritionSummary"></p>';
+          html += '<button type="button" class="btn-submit" id="confirmServings" style="padding:6px 20px">確認份量</button> <span id="servingsMsg" class="ms-2"></span>';
+          html += '<p class="text-muted mt-2" style="font-size: 13px;">※ 份量由您確認，系統不會從照片估算吃了多少。換算依據為國民健康署食物代換表。</p>';
         }
       }
       html += '<a href="history.html">查看歷史資料 →</a>';
       resultBox.innerHTML = html;
       resultBox.style.display = 'block';
+      if (currentGroups.length) {
+        for (const g of currentGroups) document.getElementById(`sv-${g.group}`).addEventListener('input', calcPreview);
+        document.getElementById('confirmServings').addEventListener('click', saveServings);
+        calcPreview();
+      }
       resultBox.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function saveServings() {
+      const body = {};
+      for (const g of currentGroups) body[g.group] = document.getElementById(`sv-${g.group}`).value;
+      const msg = document.getElementById('servingsMsg');
+      try {
+        const res = await apiFetch(`/api/logs/${currentLogId}/servings`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        msg.className = 'ms-2 text-success';
+        msg.textContent = `已更新：醣類 ${Math.round(res.nutrition.carbs_g)} 公克`;
+      } catch (err) {
+        msg.className = 'ms-2 text-danger';
+        msg.textContent = err.message;
+      }
     }
 
     form.addEventListener('submit', async e => {
