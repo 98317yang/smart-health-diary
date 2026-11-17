@@ -18,11 +18,15 @@ CREATE TABLE IF NOT EXISTS health_logs (
     glucose_post   REAL,                         -- 飯後血糖 mg/dl
     veggie_done    INTEGER,                      -- 使用者自評是否吃滿三碗蔬菜
     photo_filename TEXT,
-    total_kcal     INTEGER,                      -- 依標準份量推估的熱量
+    grain_servings   REAL,                       -- 全穀雜糧類份數（使用者確認）
+    veg_servings     REAL,                       -- 蔬菜類份數
+    protein_servings REAL,                       -- 豆魚蛋肉類份數
+    carbs_g        REAL,                         -- 依份數換算的醣類（公克）
+    total_kcal     REAL,                         -- 依份數換算的熱量（大卡）
     created_at     TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
--- 餐點照片中偵測到的每一道菜
+-- 餐點照片中偵測到的每一個食物區塊（label 為食物類別）
 CREATE TABLE IF NOT EXISTS detections (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     log_id     INTEGER NOT NULL REFERENCES health_logs(id),

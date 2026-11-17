@@ -1,0 +1,3 @@
+# 模型類別（順序須與訓練時一致）；完整資料集設定見 training/foodgroups/foodgroups.yaml
+nc: 3
+names: ['grains_starches', 'vegetables', 'protein']

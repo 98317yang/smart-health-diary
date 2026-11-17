@@ -1,5 +1,4 @@
 """YOLOv9 菜色偵測器：伺服器啟動時載入一次模型，之後每次請求直接推論。"""
-import json
 import sys
 import threading
 from pathlib import Path
@@ -18,14 +17,11 @@ from utils.augmentations import letterbox  # noqa: E402
 from utils.general import check_img_size, non_max_suppression, scale_boxes  # noqa: E402
 from utils.torch_utils import select_device  # noqa: E402
 
-
-def load_food_info(path=BACKEND_DIR / "food_info.json"):
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)["classes"]
+from nutrition import load_food_info  # noqa: E402
 
 
 class FoodDetector:
-    def __init__(self, weights, data_yaml, device="cpu", imgsz=352, conf_thres=0.25, iou_thres=0.45):
+    def __init__(self, weights, data_yaml, device="cpu", imgsz=640, conf_thres=0.25, iou_thres=0.45):
         self.device = select_device(device)
         self.model = DetectMultiBackend(str(weights), device=self.device, data=str(data_yaml))
         self.names = self.model.names
@@ -66,24 +62,18 @@ class FoodDetector:
                 })
         return results
 
-    def estimate_calories(self, detections):
-        """依標準份量對照表推估熱量（每個偵測框視為一份）。"""
-        dishes = {}
-        for d in detections:
-            info = self.food_info.get(d["label"], {})
-            item = dishes.setdefault(d["label"], {
-                "label": d["label"], "label_zh": d["label_zh"], "servings": 0,
-                "grams": 0, "kcal": 0, "kcal_known": info.get("kcal_per_100g") is not None,
+    def summarize(self, detections):
+        """把偵測結果依食物類別彙整，附上預設份量與可選份量（份量需由使用者確認）。"""
+        groups = []
+        for key, info in self.food_info.items():
+            count = sum(1 for d in detections if d["label"] == key)
+            if count == 0:
+                continue
+            groups.append({
+                "group": key, "group_zh": info["zh"], "dishes": count,
+                "serving_hint": info["serving_hint"],
+                "per_serving": info["per_serving"],
+                "portion_options": info["portion_options"],
+                "servings": info["default_servings"] * count,
             })
-            serving_g = info.get("serving_g", 100)
-            item["servings"] += 1
-            item["grams"] += serving_g
-            if item["kcal_known"]:
-                item["kcal"] += round(info["kcal_per_100g"] * serving_g / 100)
-        dishes = list(dishes.values())
-        for item in dishes:
-            if not item["kcal_known"]:
-                item["kcal"] = None
-        total = sum(i["kcal"] for i in dishes if i["kcal"] is not None)
-        return {"dishes": dishes, "total_kcal": total,
-                "incomplete": any(not i["kcal_known"] for i in dishes)}
+        return groups

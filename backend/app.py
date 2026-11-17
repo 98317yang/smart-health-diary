@@ -3,6 +3,7 @@
 啟動時載入一次 YOLOv9 模型，提供：
   註冊 / 登入 / 登出      POST /api/register, /api/login, /api/logout；GET /api/me
   新增健康日誌（含照片）  POST /api/logs
+  確認／修改餐點份數      PUT  /api/logs/<id>/servings
   歷史統計               GET  /api/history?days=7
 並同時提供 frontend/ 的網頁。
 """
@@ -18,6 +19,8 @@ from pathlib import Path
 from flask import Flask, g, jsonify, request, send_from_directory, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from nutrition import nutrition
+
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BACKEND_DIR.parent
 FRONTEND_DIR = PROJECT_DIR / "frontend"
@@ -25,11 +28,12 @@ FRONTEND_DIR = PROJECT_DIR / "frontend"
 CONFIG = {
     "DB_PATH": Path(os.environ.get("SHD_DB", BACKEND_DIR / "instance" / "health.db")),
     "UPLOAD_DIR": Path(os.environ.get("SHD_UPLOADS", BACKEND_DIR / "uploads")),
-    "WEIGHTS": Path(os.environ.get("SHD_WEIGHTS", PROJECT_DIR / "weights" / "best.pt")),
-    "DATA_YAML": PROJECT_DIR / "training" / "food.yaml",
+    "WEIGHTS": Path(os.environ.get("SHD_WEIGHTS", PROJECT_DIR / "weights" / "foodgroups_gelan_s.pt")),
+    "DATA_YAML": BACKEND_DIR / "model_classes.yaml",
     "DEVICE": os.environ.get("SHD_DEVICE", "cpu"),
-    "IMGSZ": int(os.environ.get("SHD_IMGSZ", 352)),  # 與訓練時的 350 px 一致
+    "IMGSZ": int(os.environ.get("SHD_IMGSZ", 640)),  # 與訓練時的輸入大小一致
 }
+GROUP_COLUMNS = {"grains_starches": "grain_servings", "vegetables": "veg_servings", "protein": "protein_servings"}
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 MEAL_TYPES = {"早餐", "午餐", "晚餐"}
 
@@ -61,6 +65,11 @@ def init_db():
     CONFIG["DB_PATH"].parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(CONFIG["DB_PATH"]) as db:
         db.executescript((BACKEND_DIR / "schema.sql").read_text(encoding="utf-8"))
+        # 舊版資料庫沒有份數與醣類欄位時補上
+        cols = {r[1] for r in db.execute("PRAGMA table_info(health_logs)")}
+        for col in ("grain_servings", "veg_servings", "protein_servings", "carbs_g"):
+            if col not in cols:
+                db.execute(f"ALTER TABLE health_logs ADD COLUMN {col} REAL")
 
 
 # ---------- 模型（只載入一次） ----------
@@ -110,14 +119,8 @@ def parse_glucose(value, field):
     return v
 
 
-def stored_kcal(calories):
-    """有辨識到菜色但全部都沒有熱量資料時存 NULL，避免顯示成 0 大卡。"""
-    if not calories:
-        return None
-    known = [d for d in calories["dishes"] if d["kcal"] is not None]
-    if calories["dishes"] and not known:
-        return None
-    return calories["total_kcal"]
+def servings_dict(groups):
+    return {g["group"]: g["servings"] for g in groups}
 
 
 # ---------- 帳號 ----------
@@ -188,7 +191,7 @@ def create_log():
         return error("餐別必須是早餐、午餐或晚餐")
 
     photo = request.files.get("photo")
-    detections, calories, photo_filename = [], None, None
+    detections, groups, photo_filename = [], [], None
     if photo and photo.filename:
         ext = Path(photo.filename).suffix.lower()
         if ext not in ALLOWED_EXT:
@@ -200,7 +203,7 @@ def create_log():
             detections = detector.detect(image_bytes)
         except ValueError as e:
             return error(str(e))
-        calories = detector.estimate_calories(detections)
+        groups = detector.summarize(detections)
         CONFIG["UPLOAD_DIR"].mkdir(parents=True, exist_ok=True)
         photo_filename = f"{uuid.uuid4().hex}{ext}"
         (CONFIG["UPLOAD_DIR"] / photo_filename).write_bytes(image_bytes)
@@ -210,20 +213,59 @@ def create_log():
     if all(v is None for v in fields):
         return error("請至少填寫一項資料或上傳一張照片")
 
+    servings = servings_dict(groups)
+    totals = nutrition(servings) if photo_filename else None
     db = get_db()
     cur = db.execute(
         """INSERT INTO health_logs (user_id, log_date, meal_type, exercise_done, glucose_pre,
-                                    glucose_post, veggie_done, photo_filename, total_kcal)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                    glucose_post, veggie_done, photo_filename, total_kcal,
+                                    grain_servings, veg_servings, protein_servings, carbs_g)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (session["user_id"], log_date, meal_type, fields[2], glucose_pre, glucose_post,
-         fields[3], photo_filename, stored_kcal(calories)))
+         fields[3], photo_filename, totals and totals["kcal"],
+         *[servings.get(g) for g in GROUP_COLUMNS], totals and totals["carbs_g"]))
     db.executemany(
         "INSERT INTO detections (log_id, label, label_zh, confidence, x1, y1, x2, y2) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [(cur.lastrowid, d["label"], d["label_zh"], d["confidence"], *d["box"]) for d in detections])
     db.commit()
-    return jsonify({"message": "已儲存", "log_id": cur.lastrowid,
-                    "detections": detections, "calories": calories}), 201
+    return jsonify({"message": "已儲存", "log_id": cur.lastrowid, "detections": detections,
+                    "groups": groups, "nutrition": totals}), 201
+
+
+@app.put("/api/logs/<int:log_id>/servings")
+@login_required
+def update_servings(log_id):
+    """使用者確認或修改各類別的份數後，重新計算醣類與熱量。"""
+    data = request.get_json(silent=True) or {}
+    servings = {}
+    for group in GROUP_COLUMNS:
+        if group not in data or data[group] in (None, ""):
+            continue
+        try:
+            v = float(data[group])
+        except (TypeError, ValueError):
+            return error("份數必須是數字")
+        if not 0 <= v <= 20 or (v * 2) != int(v * 2):
+            return error("份數需介於 0–20，且以 0.5 份為單位")
+        servings[group] = v
+    db = get_db()
+    row = db.execute("SELECT * FROM health_logs WHERE id = ? AND user_id = ?",
+                     (log_id, session["user_id"])).fetchone()
+    if row is None:
+        return error("找不到這筆紀錄", 404)
+    if row["photo_filename"] is None:
+        return error("這筆紀錄沒有餐點照片")
+    merged = {g: (servings[g] if g in servings else row[col])
+              for g, col in GROUP_COLUMNS.items()}
+    merged = {g: v for g, v in merged.items() if v is not None}
+    totals = nutrition(merged)
+    db.execute(
+        "UPDATE health_logs SET grain_servings = ?, veg_servings = ?, protein_servings = ?, "
+        "carbs_g = ?, total_kcal = ? WHERE id = ?",
+        (*[merged.get(g) for g in GROUP_COLUMNS], totals["carbs_g"], totals["kcal"], log_id))
+    db.commit()
+    return jsonify({"message": "份量已更新", "servings": merged, "nutrition": totals})
 
 
 @app.get("/api/history")
@@ -240,13 +282,15 @@ def history():
 
     # 逐日彙整：血糖取平均；運動 / 蔬菜當天只要有一筆「是」即算達成
     daily = {(start + timedelta(days=i)).isoformat(): {
-        "pre": [], "post": [], "exercise": None, "veggie": None} for i in range(days)}
+        "pre": [], "post": [], "exercise": None, "veggie": None, "carbs": None} for i in range(days)}
     for r in rows:
         d = daily[r["log_date"]]
         if r["glucose_pre"] is not None:
             d["pre"].append(r["glucose_pre"])
         if r["glucose_post"] is not None:
             d["post"].append(r["glucose_post"])
+        if r["carbs_g"] is not None:
+            d["carbs"] = (d["carbs"] or 0) + r["carbs_g"]
         for key, col in (("exercise", "exercise_done"), ("veggie", "veggie_done")):
             if r[col] is not None:
                 d[key] = max(d[key] or 0, r[col])
@@ -259,8 +303,9 @@ def history():
         return {"done": sum(answered), "answered_days": len(answered)}
 
     recent = db.execute(
-        """SELECT l.id, l.log_date, l.meal_type, l.total_kcal,
-                  GROUP_CONCAT(d.label_zh, '、') AS dishes
+        """SELECT l.id, l.log_date, l.meal_type, l.total_kcal, l.carbs_g,
+                  l.grain_servings, l.veg_servings, l.protein_servings,
+                  COUNT(d.id) AS n_detected
            FROM health_logs l LEFT JOIN detections d ON d.log_id = l.id
            WHERE l.user_id = ? AND l.photo_filename IS NOT NULL
            GROUP BY l.id ORDER BY l.log_date DESC, l.created_at DESC LIMIT 10""",
@@ -271,6 +316,7 @@ def history():
         "dates": list(daily.keys()),
         "glucose_pre": [avg(d["pre"]) for d in daily.values()],
         "glucose_post": [avg(d["post"]) for d in daily.values()],
+        "carbs_g": [d["carbs"] for d in daily.values()],
         "exercise": rate("exercise"),
         "veggie": rate("veggie"),
         "recent_meals": [dict(r) for r in recent],
