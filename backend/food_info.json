@@ -1,0 +1,13 @@
+{
+  "_note": "kcal_per_100g 為 5 款熱門卡路里 App 對同一菜色數值的平均；serving_g 為「標準一份」的假設重量，目前並非由影像估算。null 表示尚未蒐集數值。",
+  "classes": {
+    "green vegetables":           {"zh": "炒青菜",     "kcal_per_100g": 30,   "serving_g": 100},
+    "baby Chinese cabbage":       {"zh": "娃娃菜",     "kcal_per_100g": 45,   "serving_g": 100},
+    "shredded potatoes":          {"zh": "炒馬鈴薯絲", "kcal_per_100g": 90,   "serving_g": 100},
+    "braised chicken drumstick":  {"zh": "紅燒雞腿",   "kcal_per_100g": 145,  "serving_g": 100},
+    "braised fish":               {"zh": "紅燒魚",     "kcal_per_100g": 145,  "serving_g": 100},
+    "Stir-fried cucumber":        {"zh": "清炒小黃瓜", "kcal_per_100g": 30,   "serving_g": 100},
+    "eggplant with minced pork":  {"zh": "肉末茄子",   "kcal_per_100g": null, "serving_g": 100},
+    "scrambled egg with tomato":  {"zh": "番茄炒蛋",   "kcal_per_100g": null, "serving_g": 100}
+  }
+}

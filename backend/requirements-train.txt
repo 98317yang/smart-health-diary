@@ -1,0 +1,3 @@
+# 訓練模型時需要的套件（執行網站只需要 requirements.txt）
+-r requirements.txt
+tensorboard>=2.4.1

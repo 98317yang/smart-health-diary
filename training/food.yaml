@@ -1,0 +1,17 @@
+path: ./datasets  # dataset root directory
+train: ./train/images  # train images (relative to 'path')
+val: ./val/images  # val images (relative to 'path')
+# test: test.txt
+
+# Classes
+nc: 8  # number of classes
+names: [
+  "green vegetables",
+  "baby Chinese cabbage",
+  "shredded potatoes",
+  "braised chicken drumstick",
+  "braised fish",
+  "Stir-fried cucumber",
+  "eggplant with minced pork",
+  "scrambled egg with tomato"
+]

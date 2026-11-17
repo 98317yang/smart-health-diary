@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+myenv/
+
+# 執行期間產生的資料（含使用者上傳照片與資料庫，不可提交）
+backend/instance/
+backend/uploads/
+*.db
+
+# 模型權重（檔案過大，另外下載）
+weights/*.pt
+*.pt
+
+# 系統 / 編輯器
+.DS_Store
+.vscode/
+.idea/
+
+# 產生的訓練資料集（圖片來源各有授權，不提交）
+training/foodgroups/
+
+# 訓練測速輸出與記錄
+backend/yolov9/runs/
+training/*.log
+
+# 醫院衛教單張（著作權非本人，不公開）
+frontend/assets/pdf/
+
+# 給 Claude Code 的工作筆記（僅保留在本機）
+CLAUDE.md

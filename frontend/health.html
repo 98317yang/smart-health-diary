@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>健康日誌</title>
+
+  <!-- Bootstrap Datepicker -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker3.min.css">
+
+  <!-- Favicons -->
+  <link href="assets/img/favicon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="assets/css/main.css" rel="stylesheet">
+
+  <style>
+    /* Custom styles for form sections */
+    .form-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-section h5 {
+      font-weight: 500;
+      margin-bottom: 15px;
+    }
+
+    .form-section .radio-group, .form-section .input-group, .form-section select, .form-section input[type="file"] {
+      margin-bottom: 15px;
+    }
+
+    .btn-submit {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-submit:hover {
+      background-color: #45a049;
+    }
+
+    .header {
+      text-align: center;
+      margin-top: 30px;
+      margin-bottom: 30px;
+    }
+
+  </style>
+
+</head>
+
+<body class="index-page">
+
+  <header id="header" class="header sticky-top">
+    <div class="topbar d-flex align-items-center">
+      <div class="container d-flex justify-content-center justify-content-md-between">
+        <div class="d-none d-md-flex align-items-center">
+          <i class="bi bi-clock me-1"></i> 記得三餐準時紀錄健康日誌。
+        </div>
+        <div class="d-flex align-items-center">
+          <i class="bi bi-phone me-1"></i> 聯絡專線：089-322-833
+        </div>
+      </div>
+    </div>
+
+    <div class="branding d-flex align-items-center">
+      <div class="container position-relative d-flex align-items-center justify-content-end">
+        <a href="index.html" class="logo d-flex align-items-center me-auto">
+          <img src="assets/img/logo.png" alt="">
+        </a>
+
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="#" onclick="logout(); return false;">登出</a></li>
+            <li><a href="index.html">機構簡介</a></li>
+            <li><a href="health.html">健康日誌</a></li>
+            <li><a href="history.html">歷史資料</a></li>
+              <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                <ul>
+                  <li><a href="assets/pdf/801.pdf">認識糖尿病</a></li>               
+                  <li><a href="assets/pdf/802.pdf">糖尿病病人之運動</a></li>
+                  <li><a href="assets/pdf/803.pdf">糖尿病患之足部照護</a></li>
+                  <li><a href="assets/pdf/804.pdf">糖尿病之自我監測血糖</a></li>
+                  <li><a href="assets/pdf/805.pdf">糖尿病之低血糖處理</a></li>
+                </ul>
+              </li>
+              <li class="dropdown"><a><span>相關網站</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                <ul>
+                  <li><a href="https://www.hpa.gov.tw/Pages/List.aspx?nodeid=359">國民健康署</a></li>               
+                  <li><a href="https://www.cdc.gov.tw">疾管署</a></li>
+                  <li><a href="https://health99.hpa.gov.tw">健康九九</a></li>
+                  <li><a href="https://www.careonline.com.tw/2019/05/diabetes.html">照護線上</a></li>
+                  <li><a href="https://www.dmcare.org.tw">財團法人糖尿病關懷基金會</a></li>
+                  <li><a href="https://www.tade.org.tw">社團法人中華民國糖尿病衛教學會</a></li>
+                </ul>
+              </li>
+              
+              
+            </ul>
+            <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+          </nav>
+  
+          <a class="cta-btn" href="about_me.html">個人資料</a>
+
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="header">
+      <h2 style="font-weight: bold;">我的健康日誌</h2>
+      <p id="greeting" class="text-muted mb-2"></p>
+      <input type="date" class="form-control" id="date" name="date" style="max-width: 220px; margin: 0 auto;">
+    </div>
+
+    <form id="logForm">
+      <div class="form-section">
+        <h5 style="font-weight: bold;">今日運動時間是否 > 30 分鐘？</h5>
+        <div class="radio-group">
+          <input type="radio" id="yes" name="exercise" value="yes">
+          <label for="yes">是，已完成每日運動 30 分鐘</label>
+        </div>
+        <div class="radio-group">
+          <input type="radio" id="no" name="exercise" value="no">
+          <label for="no">否，明天會努力達成！</label>
+        </div>
+      <br>
+      <br>
+        <h5 style="font-weight: bold;">血糖測量</h5>
+        <h6>飯前血糖 (空腹)</h6>
+        <div class="input-group">
+          <input type="number" min="20" max="600" step="1" class="form-control" name="glucose_pre" placeholder="mg/dl">
+        </div>
+        <h6>飯後血糖 (用餐後)</h6>
+        <div class="input-group">
+          <input type="number" min="20" max="600" step="1" class="form-control" name="glucose_post" placeholder="mg/dl">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5 style="font-weight: bold;">三餐打卡 (照片上傳)</h5>
+        <label for="meal">選擇餐點</label>
+        <select class="form-select" id="meal" name="meal_type">
+          <option>早餐</option>
+          <option>午餐</option>
+          <option>晚餐</option>
+        </select>
+        <label for="customFile" class="mt-3">上傳圖片</label>
+        <input type="file" class="form-control" id="customFile" name="photo" accept="image/*">
+        <img id="preview" alt="" style="display:none; max-width: 100%; max-height: 260px; margin-top: 10px; border-radius: 8px;">
+        <br>
+        <br>
+        <h5 style="font-weight: bold;">今日是否吃了三碗蔬菜？</h5>
+        <div class="radio-group">
+          <input type="radio" id="yes-veggie" name="veggie" value="yes">
+          <label for="yes-veggie">是，已完成每日三碗蔬菜</label>
+        </div>
+        <div class="radio-group">
+          <input type="radio" id="no-veggie" name="veggie" value="no">
+          <label for="no-veggie">否，今日尚未完成</label>
+        </div>
+      </div>
+
+      <div class="text-center">
+        <button type="submit" class="btn-submit" id="submitBtn">提交</button><br>
+        <br>
+      </div>
+    </form>
+
+    <div id="result" class="form-section" style="display:none;"></div>
+  </div>
+
+  <!-- Vendor JS Files -->
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const form = document.getElementById('logForm');
+    const dateInput = document.getElementById('date');
+    const resultBox = document.getElementById('result');
+    dateInput.value = todayISO();
+
+    requireLogin().then(me => {
+      document.getElementById('greeting').textContent =
+        `${me.display_name || me.username}，您好！` + (me.detector_ready ? '' : '（目前伺服器未載入辨識模型，照片暫時無法分析）');
+    }).catch(() => {});
+
+    document.getElementById('customFile').addEventListener('change', e => {
+      const img = document.getElementById('preview');
+      const file = e.target.files[0];
+      if (file) { img.src = URL.createObjectURL(file); img.style.display = 'block'; }
+      else { img.style.display = 'none'; }
+    });
+
+    function renderResult(data) {
+      let html = '<h5 style="font-weight: bold;">已儲存今日紀錄 ✅</h5>';
+      if (data.calories) {
+        if (data.calories.dishes.length === 0) {
+          html += '<p>照片中沒有辨識到系統支援的菜色。</p>';
+        } else {
+          html += '<table class="table table-sm"><thead><tr><th>菜色</th><th>份數</th><th>推估熱量</th></tr></thead><tbody>';
+          for (const d of data.calories.dishes) {
+            html += `<tr><td>${escapeHtml(d.label_zh)}</td><td>${d.servings}</td>` +
+                    `<td>${d.kcal === null ? '尚無資料' : d.kcal + ' 大卡'}</td></tr>`;
+          }
+          html += '</tbody></table>';
+          const allUnknown = data.calories.dishes.every(d => d.kcal === null);
+          html += allUnknown
+            ? '<p><strong>總熱量：這些菜色尚無熱量資料</strong></p>'
+            : `<p><strong>總熱量：約 ${data.calories.total_kcal} 大卡</strong>` +
+              (data.calories.incomplete ? '（部分菜色尚無熱量資料，未計入）' : '') + '</p>';
+          html += '<p class="text-muted" style="font-size: 13px;">※ 熱量以每道菜「標準一份」推估，並非由照片估算實際份量。</p>';
+        }
+      }
+      html += '<a href="history.html">查看歷史資料 →</a>';
+      resultBox.innerHTML = html;
+      resultBox.style.display = 'block';
+      resultBox.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const fd = new FormData(form);
+      fd.append('date', dateInput.value);
+      if (!fd.get('photo') || !fd.get('photo').name) fd.delete('photo');
+      btn.disabled = true; btn.textContent = '分析中…';
+      try {
+        renderResult(await apiFetch('/api/logs', { method: 'POST', body: fd }));
+        form.reset();
+        document.getElementById('preview').style.display = 'none';
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = '提交';
+      }
+    });
+  </script>
+</body>
+
+</html>

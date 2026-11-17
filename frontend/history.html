@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>歷史資料</title>
+
+  <!-- Bootstrap Datepicker -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker3.min.css">
+
+  <!-- Favicons -->
+  <link href="assets/img/favicon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="assets/css/main.css" rel="stylesheet">
+
+  <style>
+    body {
+      background-color: #f0f4f8;
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .form-section {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s;
+    }
+
+    .form-section:hover {
+      transform: translateY(-5px);
+    }
+
+    .header {
+      text-align: center;
+      margin-top: 30px;
+      margin-bottom: 30px;
+    }
+
+    .cta-btn {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      text-decoration: none;
+      transition: background-color 0.3s;
+    }
+
+    .cta-btn:hover {
+      background-color: #0056b3;
+    }
+
+    canvas {
+      transition: transform 0.2s;
+    }
+
+    canvas:hover {
+      transform: scale(1.05);
+    }
+  </style>
+
+  <!-- Include Chart.js -->
+  <script src="assets/vendor/chartjs/chart.umd.min.js"></script>
+
+</head>
+
+<body class="index-page">
+
+  <header id="header" class="header sticky-top">
+
+    <div class="topbar d-flex align-items-center">
+      <div class="container d-flex justify-content-center justify-content-md-between">
+        <div class="d-none d-md-flex align-items-center">
+          <i class="bi bi-clock me-1"></i> 記得三餐準時紀錄健康日誌。
+        </div>
+        <div class="d-flex align-items-center">
+          <i class="bi bi-phone me-1"></i> 聯絡專線：089-322-833
+        </div>
+      </div>
+    </div><!-- End Top Bar -->
+
+    <div class="branding d-flex align-items-center">
+
+      <div class="container position-relative d-flex align-items-center justify-content-end">
+        <a href="index.html" class="logo d-flex align-items-center me-auto">
+          <img src="assets/img/logo.png" alt="">
+          <!-- Uncomment the line below if you also wish to use a text logo -->
+          <!-- <h1 class="sitename">Medicio</h1>  -->
+        </a>
+
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="#" onclick="logout(); return false;">登出</a></li>
+            <li><a href="index.html">機構簡介</a></li>
+            <li><a href="health.html">健康日誌</a></li>
+            <li><a href="history.html">歷史資料</a></li>
+            <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><a href="assets/pdf/801.pdf">認識糖尿病</a></li>               
+                <li><a href="assets/pdf/802.pdf">糖尿病病人之運動</a></li>
+                <li><a href="assets/pdf/803.pdf">糖尿病患之足部照護</a></li>
+                <li><a href="assets/pdf/804.pdf">糖尿病之自我監測血糖</a></li>
+                <li><a href="assets/pdf/805.pdf">糖尿病之低血糖處理</a></li>
+              </ul>
+            </li>
+            <li class="dropdown"><a><span>相關網站</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><a href="https://www.hpa.gov.tw/Pages/List.aspx?nodeid=359">國民健康署</a></li>               
+                <li><a href="https://www.cdc.gov.tw">疾管署</a></li>
+                <li><a href="https://health99.hpa.gov.tw">健康九九</a></li>
+                <li><a href="https://www.careonline.com.tw/2019/05/diabetes.html">照護線上</a></li>
+                <li><a href="https://www.dmcare.org.tw">財團法人糖尿病關懷基金會</a></li>
+                <li><a href="https://www.tade.org.tw">社團法人中華民國糖尿病衛教學會</a></li>
+              </ul>
+            </li>
+            
+            
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+
+        <a class="cta-btn" href="about_me.html">個人資料</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="header">
+      <h2 style="font-weight: bold;">我的歷史資料</h2>
+    </div>
+
+    <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
+      <canvas id="exercisePieChart" style="max-width: 400px; max-height: 400px;"></canvas>
+      <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 定期運動、穩定生活，讓健康成為習慣！”</p>
+    </div>
+
+    <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
+      <canvas id="lineChart" style="max-width: 600px; max-height: 400px;"></canvas>
+      <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 血糖穩定，生活無慮，健康從自我管理開始 ”</p>
+    </div>
+
+    <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
+      <canvas id="exercisePieChart2" style="max-width: 400px; max-height: 400px;"></canvas>
+      <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 每日三碗蔬菜，守護血糖更有力！”</p>
+    </div>
+
+    <div class="form-section">
+      <h5 style="font-weight: bold;">最近的餐點紀錄</h5>
+      <div id="recentMeals" class="text-muted">載入中…</div>
+    </div>
+
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/vendor/aos/aos.js"></script>
+    <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+    <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+
+    <script src="assets/js/api.js"></script>
+    <script>
+      const shortDate = iso => iso.slice(5).replace('-', '/');
+
+      function pieChart(canvasId, title, rate) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        const hasData = rate.answered_days > 0;
+        new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: hasData ? ['達成', '未達成'] : ['尚無紀錄'],
+            datasets: [{
+              data: hasData ? [rate.done, rate.answered_days - rate.done] : [1],
+              backgroundColor: hasData ? ['rgb(255, 205, 86)', 'rgb(75, 192, 192)'] : ['#ddd'],
+              borderWidth: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            animation: { duration: 1500 },
+            plugins: {
+              legend: { position: 'top' },
+              title: { display: true, text: title, color: '#555', font: { size: 22 } },
+              tooltip: { enabled: hasData, callbacks: {
+                label: item => `${item.label}：${item.raw} 天（共 ${rate.answered_days} 天有填寫）`
+              } }
+            }
+          }
+        });
+      }
+
+      function lineChart(data) {
+        new Chart(document.getElementById('lineChart').getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: data.dates.map(shortDate),
+            datasets: [
+              { label: '飯前血糖 (mg/dl)', data: data.glucose_pre, borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)', spanGaps: true, tension: 0.2 },
+              { label: '飯後血糖 (mg/dl)', data: data.glucose_post, borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)', spanGaps: true, tension: 0.2 }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: { title: { display: true, text: '近 7 日血糖紀錄（mg/dl）', color: '#555', font: { size: 22 } } },
+            scales: {
+              y: { title: { display: true, text: '血糖值 (mg/dl)' } },
+              x: { title: { display: true, text: '日期' } }
+            }
+          }
+        });
+      }
+
+      function recentMeals(rows) {
+        const box = document.getElementById('recentMeals');
+        if (rows.length === 0) { box.textContent = '最近 7 天還沒有上傳餐點照片。'; return; }
+        box.classList.remove('text-muted');
+        box.innerHTML = '<table class="table table-sm"><thead><tr><th>日期</th><th>餐別</th><th>辨識菜色</th><th>推估熱量</th></tr></thead><tbody>' +
+          rows.map(r => `<tr><td>${escapeHtml(r.log_date)}</td><td>${escapeHtml(r.meal_type || '')}</td>` +
+            `<td>${escapeHtml(r.dishes || '未辨識到菜色')}</td><td>${r.total_kcal === null ? '尚無資料' : r.total_kcal + ' 大卡'}</td></tr>`).join('') +
+          '</tbody></table>';
+      }
+
+      requireLogin()
+        .then(() => apiFetch('/api/history?days=7'))
+        .then(data => {
+          recentMeals(data.recent_meals);
+          if (typeof Chart === 'undefined') return;  // 圖表套件載入失敗時，至少顯示表格
+          pieChart('exercisePieChart', '近 7 日運動 30 分鐘達成情形', data.exercise);
+          lineChart(data);
+          pieChart('exercisePieChart2', '近 7 日三碗蔬菜達成情形', data.veggie);
+        })
+        .catch(err => { if (err.status !== 401) alert(err.message); });
+    </script>
+
+</body>
+
+</html>
