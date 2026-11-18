@@ -335,7 +335,7 @@
       let html = `
         <div class="card-title-row">
           <span class="card-icon" style="background:#e3f4ea;color:#2f8f5b"><i class="bi bi-check2-circle"></i></span>
-          <div><h2>已儲存紀錄</h2><p class="card-sub">${escapeHtml(sub)}</p></div>
+          <div><h2>${data.replaced ? '已取代原本的紀錄' : '已儲存紀錄'}</h2><p class="card-sub">${escapeHtml(sub)}</p></div>
         </div>`;
 
       if (data.nutrition && file) {
@@ -401,6 +401,8 @@
     }
 
     // ---------- 送出 ----------
+    const submitLog = fd => apiFetch('/api/logs', { method: 'POST', body: fd });
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
       const btn = document.getElementById('submitBtn');
@@ -411,10 +413,34 @@
       const meal = file ? fd.get('meal_type') : null;
       if (!file) fd.delete('meal_type');  // 沒有照片時不記錄餐別
       formMsg.className = 'form-msg';
-      btn.disabled = true;
-      btn.innerHTML = file ? '照片分析中，請稍候…' : '儲存中…';
+      const busy = on => {
+        btn.disabled = on;
+        btn.innerHTML = on ? (file ? '照片分析中，請稍候…' : '儲存中…') : '<i class="bi bi-check2-circle"></i>儲存紀錄';
+      };
+      busy(true);
       try {
-        const data = await apiFetch('/api/logs', { method: 'POST', body: fd });
+        let data;
+        try {
+          data = await submitLog(fd);
+        } catch (err) {
+          if (err.status !== 409 || !err.body || !err.body.conflict) throw err;
+          // 同一天的同一餐已經有照片紀錄：詢問是否取代
+          busy(false);
+          const ok = await confirmDialog({
+            title: '這一餐已經記錄過了',
+            message: `${err.body.date.slice(5).replace('-', '/')} 的${err.body.meal_type}已經有照片紀錄。要用這張新照片取代原本的紀錄嗎？`,
+            okText: '取代原本的紀錄',
+            cancelText: '取消'
+          });
+          if (!ok) {
+            formMsg.textContent = '已取消，原本的紀錄沒有變動。';
+            formMsg.className = 'form-msg is-info';
+            return;
+          }
+          busy(true);
+          fd.set('replace', '1');
+          data = await submitLog(fd);
+        }
         form.reset();
         resetDropzone();
         preselectMeal();
@@ -423,8 +449,7 @@
         formMsg.textContent = err.message;
         formMsg.className = 'form-msg is-error';
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check2-circle"></i>儲存紀錄';
+        busy(false);
       }
     });
   </script>

@@ -6,6 +6,7 @@ async function apiFetch(url, options = {}) {
   if (!res.ok) {
     const err = new Error(body.error || `請求失敗（${res.status}）`);
     err.status = res.status;
+    err.body = body;
     throw err;
   }
   return body;
@@ -36,6 +37,38 @@ function todayISO() {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 10);
+}
+
+// 確認視窗：以大字、大按鈕詢問使用者，回傳 Promise<boolean>
+function confirmDialog({ title, message, okText = '確定', cancelText = '取消', danger = false }) {
+  if (typeof bootstrap === 'undefined') return Promise.resolve(window.confirm(`${title}\n\n${message}`));
+  return new Promise(resolve => {
+    const el = document.createElement('div');
+    el.className = 'modal fade';
+    el.tabIndex = -1;
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('role', 'dialog');
+    el.innerHTML = `
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal">
+          <div class="modal-body">
+            <h2 class="app-modal-title">${escapeHtml(title)}</h2>
+            <p class="app-modal-text">${escapeHtml(message)}</p>
+          </div>
+          <div class="app-modal-actions">
+            <button type="button" class="btn-app btn-ghost" data-act="cancel">${escapeHtml(cancelText)}</button>
+            <button type="button" class="btn-app${danger ? ' btn-danger-app' : ''}" data-act="ok">${escapeHtml(okText)}</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    const modal = new bootstrap.Modal(el);
+    let result = false;
+    el.querySelector('[data-act=ok]').addEventListener('click', () => { result = true; modal.hide(); });
+    el.querySelector('[data-act=cancel]').addEventListener('click', () => modal.hide());
+    el.addEventListener('hidden.bs.modal', () => { el.remove(); resolve(result); });
+    modal.show();
+  });
 }
 
 // 依登入狀態切換導覽列：未登入顯示「登入」，登入後顯示「登出」與個人資料圖示

@@ -99,7 +99,6 @@
           <h1>我的歷史資料</h1>
           <p id="rangeText">最近 7 天</p>
         </div>
-        <a href="health.html" class="btn-app btn-sm"><i class="bi bi-plus-lg"></i>新增紀錄</a>
       </div>
 
       <div class="stat-grid">
@@ -244,14 +243,35 @@
       const fmt = v => v === null || v === undefined ? '—' : `${Math.round(v * 10) / 10}`;
       box.innerHTML = '<table class="meal-table"><thead><tr><th>日期</th><th>餐別</th>' +
         '<th class="num hide-sm">全穀雜糧</th><th class="num hide-sm">蔬菜</th><th class="num hide-sm">豆魚蛋肉</th>' +
-        '<th class="num">醣類</th><th class="num">熱量</th></tr></thead><tbody>' +
+        '<th class="num">醣類</th><th class="num">熱量</th><th><span class="visually-hidden">刪除</span></th></tr></thead><tbody>' +
         rows.map(r => `<tr><td>${escapeHtml(shortDate(r.log_date))}</td><td>${escapeHtml(r.meal_type || '—')}</td>` +
           `<td class="num hide-sm">${fmt(r.grain_servings)} 份</td><td class="num hide-sm">${fmt(r.veg_servings)} 份</td>` +
           `<td class="num hide-sm">${fmt(r.protein_servings)} 份</td>` +
           `<td class="num">${r.carbs_g === null ? '—' : Math.round(r.carbs_g) + ' g'}</td>` +
-          `<td class="num">${r.total_kcal === null ? '—' : Math.round(r.total_kcal) + ' 大卡'}</td></tr>`).join('') +
+          `<td class="num">${r.total_kcal === null ? '—' : Math.round(r.total_kcal) + ' 大卡'}</td>` +
+          `<td class="act"><button type="button" class="icon-btn" data-id="${r.id}" data-label="${escapeHtml(shortDate(r.log_date) + ' ' + (r.meal_type || '餐點'))}" ` +
+          `aria-label="刪除 ${escapeHtml(shortDate(r.log_date) + ' ' + (r.meal_type || '餐點'))} 的紀錄" title="刪除這筆紀錄"><i class="bi bi-trash3"></i></button></td></tr>`).join('') +
         '</tbody></table>' +
         '<p class="note">份數由使用者確認；醣類與熱量依國民健康署食物代換表換算。</p>';
+      box.querySelectorAll('.icon-btn').forEach(btn => btn.addEventListener('click', () => deleteMeal(btn)));
+    }
+
+    async function deleteMeal(btn) {
+      const ok = await confirmDialog({
+        title: '刪除這筆餐點紀錄？',
+        message: `${btn.dataset.label}的照片與份量會被刪除，刪除後無法復原。同一次填寫的血糖與運動紀錄會保留。`,
+        okText: '刪除',
+        cancelText: '取消',
+        danger: true
+      });
+      if (!ok) return;
+      try {
+        await apiFetch(`/api/logs/${btn.dataset.id}`, { method: 'DELETE' });
+        location.reload();  // 重新整理，讓統計與圖表一起更新
+      } catch (err) {
+        const box = document.getElementById('recentMeals');
+        box.insertAdjacentHTML('afterbegin', `<div class="form-msg is-error">${escapeHtml(err.message)}</div>`);
+      }
     }
 
     requireLogin()

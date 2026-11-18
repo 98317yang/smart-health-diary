@@ -684,6 +684,77 @@ body.app-body {
   text-align: right;
 }
 
+/* ---------- 確認視窗 ---------- */
+.app-modal {
+  border: 0;
+  border-radius: 16px;
+  padding: 8px;
+}
+
+.app-modal .modal-body {
+  padding: 20px 20px 8px;
+}
+
+.app-modal-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--app-text);
+}
+
+.app-modal-text {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--app-text);
+  margin: 0;
+}
+
+.app-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 20px 20px;
+}
+
+.btn-app.btn-danger-app {
+  background: var(--app-danger);
+  border-color: var(--app-danger);
+}
+
+.btn-app.btn-danger-app:hover {
+  background: #a83a2d;
+  border-color: #a83a2d;
+}
+
+.form-msg.is-info {
+  display: block;
+  color: var(--app-text);
+  background: #eef3f3;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--app-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  color: var(--app-danger);
+  border-color: #efc4bd;
+  background: #fdf3f1;
+}
+
+.meal-table td.act {
+  width: 56px;
+  text-align: right;
+}
+
 /* ---------- 手機 ---------- */
 @media (max-width: 767px) {
   body.app-body {
@@ -742,5 +813,9 @@ body.app-body {
 
   .meal-table .hide-sm {
     display: none;
+  }
+
+  .app-modal-actions .btn-app {
+    flex: 1 1 100%;
   }
 }

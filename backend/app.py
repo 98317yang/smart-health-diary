@@ -189,6 +189,32 @@ def me():
 
 
 # ---------- 健康日誌 ----------
+MEAL_COLUMNS = ("meal_type", "photo_filename", "grain_servings", "veg_servings",
+                "protein_servings", "carbs_g", "total_kcal")
+
+
+def remove_meal(db, row):
+    """移除一筆紀錄中的餐點資料。
+
+    同一次送出的血糖、運動、蔬菜自評會保留；如果這筆紀錄只有餐點，就整筆刪除。
+    回傳要刪除的照片檔名（等資料庫 commit 之後再刪檔）。
+    """
+    db.execute("DELETE FROM detections WHERE log_id = ?", (row["id"],))
+    has_other = any(row[c] is not None for c in ("exercise_done", "glucose_pre", "glucose_post", "veggie_done"))
+    if has_other:
+        db.execute(f"UPDATE health_logs SET {', '.join(c + ' = NULL' for c in MEAL_COLUMNS)} WHERE id = ?",
+                   (row["id"],))
+    else:
+        db.execute("DELETE FROM health_logs WHERE id = ?", (row["id"],))
+    return row["photo_filename"]
+
+
+def delete_photos(filenames):
+    for name in filenames:
+        if name:
+            (CONFIG["UPLOAD_DIR"] / name).unlink(missing_ok=True)
+
+
 @app.post("/api/logs")
 @login_required
 def create_log():
@@ -204,8 +230,20 @@ def create_log():
         return error("餐別必須是早餐、午餐或晚餐")
 
     photo = request.files.get("photo")
+    has_photo = bool(photo and photo.filename)
+    replace = form.get("replace") == "1"
+    db = get_db()
+    existing = []
+    if has_photo and meal_type:
+        existing = db.execute(
+            "SELECT * FROM health_logs WHERE user_id = ? AND log_date = ? AND meal_type = ? "
+            "AND photo_filename IS NOT NULL", (session["user_id"], log_date, meal_type)).fetchall()
+        if existing and not replace:
+            return jsonify({"error": f"{log_date} 的{meal_type}已經記錄過了", "conflict": True,
+                            "date": log_date, "meal_type": meal_type}), 409
+
     detections, groups, photo_filename, image_size = [], [], None, None
-    if photo and photo.filename:
+    if has_photo:
         ext = Path(photo.filename).suffix.lower()
         if ext not in ALLOWED_EXT:
             return error("只接受 JPG、PNG、WEBP、BMP 圖片")
@@ -228,7 +266,8 @@ def create_log():
 
     servings = servings_dict(groups)
     totals = nutrition(servings) if photo_filename else None
-    db = get_db()
+    # 照片辨識成功後才移除舊的餐點，避免新照片失敗時舊紀錄也不見
+    old_photos = [remove_meal(db, row) for row in existing]
     cur = db.execute(
         """INSERT INTO health_logs (user_id, log_date, meal_type, exercise_done, glucose_pre,
                                     glucose_post, veggie_done, photo_filename, total_kcal,
@@ -242,9 +281,26 @@ def create_log():
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [(cur.lastrowid, d["label"], d["label_zh"], d["confidence"], *d["box"]) for d in detections])
     db.commit()
-    return jsonify({"message": "已儲存", "log_id": cur.lastrowid, "detections": detections,
+    delete_photos(old_photos)
+    return jsonify({"message": "已取代原本的紀錄" if old_photos else "已儲存", "replaced": bool(old_photos),
+                    "log_id": cur.lastrowid, "detections": detections,
                     "image_size": image_size,
                     "groups": groups, "nutrition": totals}), 201
+
+
+@app.delete("/api/logs/<int:log_id>")
+@login_required
+def delete_meal(log_id):
+    """刪除一筆餐點紀錄（同次送出的血糖、運動資料會保留）。"""
+    db = get_db()
+    row = db.execute("SELECT * FROM health_logs WHERE id = ? AND user_id = ?",
+                     (log_id, session["user_id"])).fetchone()
+    if row is None or row["photo_filename"] is None:
+        return error("找不到這筆餐點紀錄", 404)
+    photo = remove_meal(db, row)
+    db.commit()
+    delete_photos([photo])
+    return jsonify({"message": "已刪除"})
 
 
 @app.put("/api/logs/<int:log_id>/servings")
