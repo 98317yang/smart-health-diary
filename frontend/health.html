@@ -359,7 +359,6 @@
       } else {
         html += '<p>已儲存今天的血糖與運動紀錄。</p>';
       }
-      html += '<div class="mt-4"><a href="history.html" class="btn-app btn-ghost btn-sm">查看歷史資料 <i class="bi bi-arrow-right"></i></a></div>';
 
       resultBox.innerHTML = html;
       resultBox.style.display = 'block';
@@ -390,8 +389,13 @@
         const res = await apiFetch(`/api/logs/${currentLogId}/servings`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         });
-        msg.textContent = `已更新：這餐醣類約 ${Math.round(res.nutrition.carbs_g)} 公克`;
-        msg.className = 'form-msg is-success';
+        await noticeDialog({
+          title: '份量已儲存',
+          message: `這餐約含醣類 ${Math.round(res.nutrition.carbs_g)} 公克、熱量 ${Math.round(res.nutrition.kcal)} 大卡。`
+        });
+        resultBox.style.display = 'none';
+        resultBox.innerHTML = '';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (err) {
         msg.textContent = err.message;
         msg.className = 'form-msg is-error';

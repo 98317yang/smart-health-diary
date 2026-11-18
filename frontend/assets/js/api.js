@@ -71,6 +71,37 @@ function confirmDialog({ title, message, okText = '確定', cancelText = '取消
   });
 }
 
+// 成功提示視窗：一個「完成」按鈕，關閉後 resolve
+function noticeDialog({ title, message, okText = '完成' }) {
+  if (typeof bootstrap === 'undefined') { window.alert(`${title}\n\n${message}`); return Promise.resolve(); }
+  return new Promise(resolve => {
+    const el = document.createElement('div');
+    el.className = 'modal fade';
+    el.tabIndex = -1;
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('role', 'dialog');
+    el.innerHTML = `
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal app-modal-success">
+          <div class="modal-body">
+            <div class="success-mark"><i class="bi bi-check-lg"></i></div>
+            <h2 class="app-modal-title">${escapeHtml(title)}</h2>
+            <p class="app-modal-text">${escapeHtml(message)}</p>
+          </div>
+          <div class="app-modal-actions">
+            <button type="button" class="btn-app btn-block" data-act="ok">${escapeHtml(okText)}</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    const modal = new bootstrap.Modal(el);
+    el.querySelector('[data-act=ok]').addEventListener('click', () => modal.hide());
+    el.addEventListener('shown.bs.modal', () => el.querySelector('[data-act=ok]').focus());
+    el.addEventListener('hidden.bs.modal', () => { el.remove(); resolve(); });
+    modal.show();
+  });
+}
+
 // 依登入狀態切換導覽列：未登入顯示「登入」，登入後顯示「登出」與個人資料圖示
 async function initAuthNav() {
   let s = { logged_in: false };
