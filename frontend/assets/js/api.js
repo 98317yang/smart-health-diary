@@ -210,13 +210,16 @@ function markActiveNav() {
 // 因此登出後按上一頁仍會看到原本的內容。這裡在還原時重新確認登入狀態。
 window.addEventListener('pageshow', async e => {
   if (!e.persisted) return;
+  // 這一頁是從上一頁的快取還原的，裡面可能是登出前的資料。
+  // 先立刻遮住內容（不能等 await，否則查證期間畫面會露出來），確認身分後再放行。
+  if (pageNeedsAuth) document.body.classList.remove('auth-ok');
   let s = { logged_in: false };
   try { s = await apiFetch('/api/session'); } catch (_) { /* 後端沒回應時當作未登入 */ }
   if (pageNeedsAuth && (!s.logged_in || (pageRole && s.role !== pageRole))) {
-    document.body.classList.remove('auth-ok');  // 先遮住內容再導向
     window.location.replace(s.logged_in ? homeFor(s.role) : 'login.html');
     return;
   }
+  if (pageNeedsAuth) document.body.classList.add('auth-ok');
   initAuthNav();  // 可能在別的分頁登入或登出，導覽列要跟著更新
 });
 

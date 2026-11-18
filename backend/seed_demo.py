@@ -30,7 +30,7 @@ DETS_PATH = BACKEND_DIR / "demo_detections.json"
 
 MEALS = ("早餐", "午餐", "晚餐")
 
-# 每位示範病人：帳號、姓名、生日、性別、血糖區間、達成率、最後一次記錄距今幾天
+# 五位示範病人：帳號、姓名、生日、性別、血糖區間、達成率、最後一次記錄距今幾天
 # 血糖以常態分布抽樣，刻意讓部分病人落在控制目標之外，醫護端才看得到需要關注的案例。
 DEMO_PATIENTS = [
     dict(username="demo_chen", name="陳秀英", birthday="1956-03-12", gender="女",
@@ -41,13 +41,8 @@ DEMO_PATIENTS = [
          pre=(148, 14), post=(207, 25), exercise=0.2, veggie=0.3, days_back=1, meals_per_day=2),
     dict(username="demo_chang", name="張國棟", birthday="1954-01-18", gender="男",
          pre=(126, 13), post=(152, 18), exercise=0.5, veggie=0.5, days_back=5, meals_per_day=1),
-    dict(username="demo_li", name="李淑芬", birthday="1977-09-08", gender="女",
-         pre=(98, 8), post=(126, 12), exercise=0.9, veggie=0.9, days_back=0, meals_per_day=3),
     dict(username="demo_huang", name="黃麗華", birthday="1971-04-14", gender="女",
          pre=(74, 7), post=(132, 16), exercise=0.6, veggie=0.6, days_back=0, meals_per_day=2),
-    # 剛註冊、還沒開始記錄，醫護端會標示「從未記錄」
-    dict(username="demo_wu", name="吳進財", birthday="1946-05-30", gender="男",
-         pre=None, post=None, exercise=0, veggie=0, days_back=None, meals_per_day=0),
 ]
 DAYS = 14  # 產生最近兩週的紀錄
 
