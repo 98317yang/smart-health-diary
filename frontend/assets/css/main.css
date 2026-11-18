@@ -2022,3 +2022,11 @@ body.logged-in .auth-guest {
     margin: 0 10px 0 0;
   }
 }
+
+/* 靠右的下拉選單改為向左展開，避免超出畫面 */
+@media (min-width: 1200px) {
+  .navmenu > ul > li.dropdown-end > ul {
+    left: auto;
+    right: 0;
+  }
+}
