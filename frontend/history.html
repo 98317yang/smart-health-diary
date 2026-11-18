@@ -195,12 +195,13 @@
       document.getElementById(canvasId).parentElement.outerHTML = `<div class="empty-state">${text}</div>`;
     }
 
-    const baseOptions = {
+    // 每張圖各自產生一份設定：Chart.js 會改寫傳入的設定物件，共用同一份會互相影響
+    const baseOptions = () => ({
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { position: 'bottom', labels: { font: { size: 14 }, boxWidth: 14 } } },
-      scales: { x: { grid: { display: false }, ticks: { font: { size: 13 } } }, y: { ticks: { font: { size: 13 } } } }
-    };
+      scales: { x: { offset: true, grid: { display: false }, ticks: { font: { size: 13 } } }, y: { ticks: { font: { size: 13 } } } }
+    });
 
     function lineChart(data) {
       if (mean(data.glucose_pre) === null && mean(data.glucose_post) === null) {
@@ -217,7 +218,7 @@
               spanGaps: true, tension: 0.25, pointRadius: 5, borderWidth: 3 }
           ]
         },
-        options: baseOptions
+        options: baseOptions()
       });
     }
 
@@ -231,8 +232,14 @@
           labels: data.dates.map(shortDate),
           datasets: [{ label: '醣類（公克）', data: data.carbs_g, backgroundColor: '#e2b25c', borderRadius: 6, maxBarThickness: 46 }]
         },
-        options: { ...baseOptions, plugins: { legend: { display: false } },
-                   scales: { ...baseOptions.scales, y: { beginAtZero: true, ticks: { font: { size: 13 } } } } }
+        options: {
+          ...baseOptions(),
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { offset: true, grid: { display: false }, ticks: { font: { size: 13 } } },
+            y: { beginAtZero: true, ticks: { font: { size: 13 } } }
+          }
+        }
       });
     }
 
