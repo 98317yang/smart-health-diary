@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS users (
     username      TEXT    NOT NULL UNIQUE,
     password_hash TEXT    NOT NULL,
     display_name  TEXT,
+    birthday      TEXT,                                 -- YYYY-MM-DD，用來推算年齡
+    gender        TEXT,                                  -- 女 / 男
     role          TEXT    NOT NULL DEFAULT 'patient',   -- patient 病人 / staff 醫護人員
     created_at    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );

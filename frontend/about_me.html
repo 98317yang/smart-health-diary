@@ -115,13 +115,11 @@
         <dl class="profile-list">
           <div><dt>姓名</dt><dd id="pName">—</dd></div>
           <div><dt>帳號</dt><dd id="pUser">—</dd></div>
+          <div class="auth-patient"><dt>生日</dt><dd id="pBirthday">—</dd></div>
+          <div class="auth-patient"><dt>性別</dt><dd id="pGender">—</dd></div>
           <div><dt>註冊日期</dt><dd id="pCreated">—</dd></div>
         </dl>
 
-        <div class="quick-links auth-patient">
-          <a href="health.html" class="btn-app btn-ghost btn-sm"><i class="bi bi-journal-plus"></i> 健康日誌</a>
-          <a href="history.html" class="btn-app btn-ghost btn-sm"><i class="bi bi-graph-up"></i> 歷史資料</a>
-        </div>
         <div class="auth-staff mb-3">
           <a href="staff.html" class="btn-app btn-ghost btn-sm btn-block"><i class="bi bi-people"></i> 病人管理</a>
         </div>
@@ -149,6 +147,8 @@
         me.role === 'staff' ? '醫護人員帳號' : '歡迎回來，祝你今天血糖穩定';
       document.getElementById('pName').textContent = me.display_name || '（未填寫）';
       document.getElementById('pUser').textContent = me.username;
+      document.getElementById('pBirthday').textContent = formatBirthday(me.birthday, me.age);
+      document.getElementById('pGender').textContent = me.gender || '（未填寫）';
       document.getElementById('pCreated').textContent = localDate(me.created_at);
     }).catch(() => {});
   </script>

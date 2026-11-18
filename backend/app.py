@@ -80,9 +80,13 @@ def init_db():
         for col in ("grain_servings", "veg_servings", "protein_servings", "carbs_g"):
             if col not in cols:
                 db.execute(f"ALTER TABLE health_logs ADD COLUMN {col} REAL")
-        # 舊版資料庫沒有角色欄位時補上，既有帳號一律視為病人
-        if "role" not in {r[1] for r in db.execute("PRAGMA table_info(users)")}:
+        # 舊版資料庫沒有角色、生日、性別欄位時補上，既有帳號一律視為病人
+        user_cols = {r[1] for r in db.execute("PRAGMA table_info(users)")}
+        if "role" not in user_cols:
             db.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'patient'")
+        for col in ("birthday", "gender"):
+            if col not in user_cols:
+                db.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
 
 
 # ---------- 模型（只載入一次） ----------
@@ -157,6 +161,28 @@ def servings_dict(groups):
     return {g["group"]: g["servings"] for g in groups}
 
 
+GENDERS = ("女", "男")
+
+
+def age_from_birthday(birthday):
+    """由生日推算足歲；生日空白或格式不對時回 None，不讓它影響其他欄位。"""
+    if not birthday:
+        return None
+    try:
+        b = date.fromisoformat(birthday)
+    except ValueError:
+        return None
+    today = date.today()
+    return today.year - b.year - ((today.month, today.day) < (b.month, b.day))
+
+
+def profile_fields(row):
+    """病人基本資料統一由這裡組出，使用者端與醫護端才不會各算一套。"""
+    birthday = row["birthday"] if "birthday" in row.keys() else None
+    gender = row["gender"] if "gender" in row.keys() else None
+    return {"birthday": birthday, "gender": gender, "age": age_from_birthday(birthday)}
+
+
 # ---------- 帳號 ----------
 @app.post("/api/register")
 def register():
@@ -164,14 +190,27 @@ def register():
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
     display_name = (data.get("display_name") or "").strip() or None
+    birthday = (data.get("birthday") or "").strip()
+    gender = (data.get("gender") or "").strip()
     if not 3 <= len(username) <= 30:
         return error("帳號長度需為 3–30 個字元")
     if len(password) < 6:
         return error("密碼至少需要 6 個字元")
+    if not birthday:
+        return error("請選擇生日")
+    try:
+        b = date.fromisoformat(birthday)
+    except ValueError:
+        return error("生日格式需為 YYYY-MM-DD")
+    if not date(1900, 1, 1) <= b <= date.today():
+        return error("請確認生日是否正確")
+    if gender not in GENDERS:
+        return error("請選擇性別")
     db = get_db()
     try:
-        db.execute("INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)",
-                   (username, generate_password_hash(password), display_name))
+        db.execute("""INSERT INTO users (username, password_hash, display_name, birthday, gender)
+                      VALUES (?, ?, ?, ?, ?)""",
+                   (username, generate_password_hash(password), display_name, birthday, gender))
         db.commit()
     except sqlite3.IntegrityError:
         return error("此帳號已被使用", 409)
@@ -215,12 +254,13 @@ def session_status():
 @app.get("/api/me")
 @login_required
 def me():
-    user = get_db().execute("SELECT username, display_name, role, created_at FROM users WHERE id = ?",
-                            (session["user_id"],)).fetchone()
+    user = get_db().execute(
+        "SELECT username, display_name, birthday, gender, role, created_at FROM users WHERE id = ?",
+        (session["user_id"],)).fetchone()
     if user is None:
         session.clear()
         return error("請先登入", 401)
-    return jsonify(dict(user) | {"detector_ready": detector is not None})
+    return jsonify(dict(user) | profile_fields(user) | {"detector_ready": detector is not None})
 
 
 # ---------- 健康日誌 ----------
@@ -497,7 +537,7 @@ def staff_patients():
         d["meals"] += r["meals"] or 0
 
     patients = db.execute(
-        """SELECT u.id, u.username, u.display_name, u.created_at,
+        """SELECT u.id, u.username, u.display_name, u.birthday, u.gender, u.created_at,
                   (SELECT MAX(log_date) FROM health_logs WHERE user_id = u.id) AS last_log_date,
                   (SELECT COUNT(*) FROM health_logs WHERE user_id = u.id) AS total_logs
            FROM users u WHERE u.role = 'patient' ORDER BY u.id""").fetchall()
@@ -512,6 +552,7 @@ def staff_patients():
         days_since = (end - date.fromisoformat(u["last_log_date"])).days if u["last_log_date"] else None
         out.append({
             "id": u["id"], "username": u["username"], "display_name": u["display_name"],
+            **profile_fields(u),
             "created_at": u["created_at"], "last_log_date": u["last_log_date"],
             "days_since_log": days_since, "total_logs": u["total_logs"],
             "glucose_pre": pre, "glucose_post": post, "glucose_flags": glucose_flags(pre, post),
@@ -530,7 +571,8 @@ def staff_patient_detail(patient_id):
     """單一病人的詳細紀錄；統計與病人自己看到的完全相同（共用 history_payload）。"""
     days = min(max(request.args.get("days", 14, type=int), 1), 90)
     db = get_db()
-    user = db.execute("SELECT id, username, display_name, created_at, role FROM users WHERE id = ?",
+    user = db.execute("""SELECT id, username, display_name, birthday, gender, created_at, role
+                         FROM users WHERE id = ?""",
                       (patient_id,)).fetchone()
     if user is None or user["role"] != "patient":
         return error("找不到這位病人", 404)
@@ -553,19 +595,35 @@ def staff_patient_detail(patient_id):
     last = data["recent_meals"][0]["log_date"] if data["recent_meals"] else None
     return jsonify({
         "patient": {"id": user["id"], "username": user["username"],
-                    "display_name": user["display_name"], "created_at": user["created_at"]},
+                    "display_name": user["display_name"], "created_at": user["created_at"],
+                    **profile_fields(user)},
         "reference": GLUCOSE_REF, "last_meal_date": last, **data})
 
 
 # ---------- 網頁 ----------
+def send_page(filename):
+    """網頁一律不給瀏覽器快取：登出後按上一頁時，才會重新向伺服器要資料並檢查登入狀態。"""
+    resp = send_from_directory(FRONTEND_DIR, filename)
+    if filename.endswith(".html"):
+        resp.headers["Cache-Control"] = "no-store, must-revalidate"
+    return resp
+
+
 @app.get("/")
 def index():
-    return send_from_directory(FRONTEND_DIR, "index.html")
+    return send_page("index.html")
 
 
 @app.get("/<path:filename>")
 def frontend(filename):
-    return send_from_directory(FRONTEND_DIR, filename)
+    return send_page(filename)
+
+
+@app.after_request
+def no_store_api(resp):
+    if request.path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.errorhandler(413)

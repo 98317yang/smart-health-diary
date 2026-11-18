@@ -34,6 +34,11 @@ body.app-body {
   padding: 0 16px;
 }
 
+/* 需要登入的頁面：確認身分之前不顯示內容 */
+body.needs-auth:not(.auth-ok) .app-main {
+  visibility: hidden;
+}
+
 /* ---------- 頁首 ---------- */
 .page-head {
   display: flex;
@@ -142,6 +147,22 @@ body.app-body {
   color: var(--app-muted);
   font-size: 15px;
   pointer-events: none;
+}
+
+/* 並排欄位（例如生日的年／月／日） */
+.field-row {
+  display: grid;
+  gap: 10px;
+}
+
+.field-row.cols-3 {
+  grid-template-columns: 1.2fr 1fr 1fr;
+}
+
+@media (max-width: 420px) {
+  .field-row.cols-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
 }
 
 .field-hint {
@@ -942,6 +963,14 @@ body.app-body {
   font-size: 20px;
   font-weight: 700;
   margin: 0;
+}
+
+/* 病人卡片上的年齡與性別，字級比姓名小一階 */
+.pc-meta {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--app-muted);
+  white-space: nowrap;
 }
 
 .pc-sub {

@@ -128,6 +128,28 @@
             <input type="password" class="form-control" id="password" minlength="6" autocomplete="new-password" required>
             <div class="field-hint">至少 6 個字元</div>
           </div>
+          <div class="field">
+            <span class="field-label">生日</span>
+            <div class="field-row cols-3">
+              <select class="form-select" id="birthYear" aria-label="出生年" required></select>
+              <select class="form-select" id="birthMonth" aria-label="出生月" required></select>
+              <select class="form-select" id="birthDay" aria-label="出生日" required></select>
+            </div>
+            <div class="field-hint">用來推算年齡，醫護人員看紀錄時會參考</div>
+          </div>
+          <div class="field">
+            <span class="field-label">性別</span>
+            <div class="choice-group">
+              <div class="choice">
+                <input type="radio" id="gender-f" name="gender" value="女" required>
+                <label for="gender-f">女</label>
+              </div>
+              <div class="choice">
+                <input type="radio" id="gender-m" name="gender" value="男" required>
+                <label for="gender-m">男</label>
+              </div>
+            </div>
+          </div>
           <div id="registerMsg" class="form-msg" role="alert"></div>
           <button type="submit" class="btn-app btn-block" id="registerBtn">註冊</button>
         </form>
@@ -144,11 +166,60 @@
   <script src="assets/js/main.js"></script>
   <script src="assets/js/api.js"></script>
   <script>
+    // 生日用三個下拉選單，長輩不必在日曆上翻好幾十年
+    const birthYear = document.getElementById('birthYear');
+    const birthMonth = document.getElementById('birthMonth');
+    const birthDay = document.getElementById('birthDay');
+
+    function fillSelect(sel, from, to, label, reverse) {
+      const years = [];
+      for (let v = from; v <= to; v++) years.push(v);
+      if (reverse) years.reverse();
+      sel.innerHTML = '<option value="">' + label + '</option>' +
+        years.map(v => '<option value="' + v + '">' + v + '</option>').join('');
+    }
+
+    const thisYear = new Date().getFullYear();
+    fillSelect(birthYear, 1920, thisYear, '年', true);
+    fillSelect(birthMonth, 1, 12, '月');
+
+    // 依年月調整日數，二月與小月不會出現 31 日
+    function syncDays() {
+      const y = Number(birthYear.value), m = Number(birthMonth.value);
+      const last = (y && m) ? new Date(y, m, 0).getDate() : 31;
+      const keep = birthDay.value;
+      fillSelect(birthDay, 1, last, '日');
+      if (keep && Number(keep) <= last) birthDay.value = keep;
+    }
+    birthYear.addEventListener('change', syncDays);
+    birthMonth.addEventListener('change', syncDays);
+    syncDays();
+
+    function birthdayValue() {
+      const y = birthYear.value, m = birthMonth.value, d = birthDay.value;
+      if (!y || !m || !d) return '';
+      return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
+
     document.getElementById('registerForm').addEventListener('submit', async e => {
       e.preventDefault();
       const msg = document.getElementById('registerMsg');
       const btn = document.getElementById('registerBtn');
       msg.className = 'form-msg';
+
+      const birthday = birthdayValue();
+      const gender = document.querySelector('input[name="gender"]:checked');
+      if (!birthday) {
+        msg.textContent = '請選擇完整的生日';
+        msg.className = 'form-msg is-error';
+        return;
+      }
+      if (!gender) {
+        msg.textContent = '請選擇性別';
+        msg.className = 'form-msg is-error';
+        return;
+      }
+
       btn.disabled = true;
       try {
         await apiFetch('/api/register', {
@@ -157,7 +228,9 @@
           body: JSON.stringify({
             display_name: document.getElementById('displayName').value,
             username: document.getElementById('username').value,
-            password: document.getElementById('password').value
+            password: document.getElementById('password').value,
+            birthday: birthday,
+            gender: gender.value
           })
         });
         msg.textContent = '註冊成功，即將前往登入頁…';

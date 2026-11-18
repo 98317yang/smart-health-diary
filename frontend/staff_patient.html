@@ -296,7 +296,8 @@
         const d = await apiFetch(`/api/staff/patients/${patientId}?days=${days}`);
         document.getElementById('pName').textContent = d.patient.display_name || d.patient.username;
         document.getElementById('pSub').textContent =
-          `帳號 ${d.patient.username} · 註冊於 ${d.patient.created_at.slice(0, 10)}`;
+          `${formatAgeGender(d.patient.age, d.patient.gender)} · 帳號 ${d.patient.username}` +
+          ` · 註冊於 ${d.patient.created_at.slice(0, 10)}`;
         document.title = `${d.patient.display_name || d.patient.username}｜病人紀錄`;
         stats(d);
         weekStrip(d);

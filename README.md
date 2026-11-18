@@ -6,12 +6,12 @@
 
 ## 功能
 
-- 帳號註冊、登入、登出（密碼以雜湊儲存，使用 session 驗證）
+- 帳號註冊、登入、登出（密碼以雜湊儲存，使用 session 驗證）；註冊時填寫生日與性別，供醫護端判讀紀錄時參考
 - 健康日誌：運動是否達 30 分鐘、飯前／飯後血糖、三碗蔬菜自評、三餐照片
 - 食物類別辨識：依國健署每日飲食指南辨識三類食物，在照片上框出辨識結果；使用者以加減按鈕調整份數後，依食物代換表換算醣類與熱量
 - 歷史資料：近 7 日統計（運動與蔬菜達成天數、平均血糖、平均每日醣類）、每日達成情形、血糖折線圖、醣類長條圖、最近的餐點紀錄
 - 介面以年長使用者為對象：字級與按鈕放大，是／否以整塊按鈕點選，手機與電腦皆可使用
-- 醫護端（唯讀）：病人清單標示久未記錄與血糖超出參考範圍者，可逐一查看該病人的血糖趨勢、每日達成情形與餐點照片
+- 醫護端（唯讀）：病人清單顯示年齡與性別，並標示久未記錄與血糖超出參考範圍者，可逐一查看該病人的血糖趨勢、每日達成情形與餐點照片
 
 ## 系統架構
 
@@ -56,7 +56,7 @@ python app.py
 
 | 方法 | 路徑 | 說明 |
 |---|---|---|
-| POST | `/api/register` | 註冊（username、password、display_name） |
+| POST | `/api/register` | 註冊（username、password、birthday、gender，display_name 選填） |
 | POST | `/api/login` / `/api/logout` | 登入／登出 |
 | GET | `/api/me` | 目前登入者資訊 |
 | POST | `/api/logs` | 新增日誌（multipart，可附 `photo`），回傳辨識結果、各類別預設份數與醣類 |
@@ -78,11 +78,26 @@ python app.py
 python backend/manage.py create-staff nurse --name "王護理師"   # 會詢問密碼
 python backend/manage.py list                                   # 列出所有帳號與角色
 python backend/manage.py set-role <帳號> staff                  # 將既有帳號改為醫護
+python backend/manage.py set-password <帳號>                    # 重設密碼
 ```
 
 - 登入後會依角色導向：病人到健康日誌，醫護到病人清單；開到不屬於自己角色的頁面會被導回。
 - 醫護端一律唯讀，不能代替病人新增或修改紀錄；醫護帳號也不能記錄自己的健康日誌。
 - 餐點照片不是公開路徑，必須經過 `/api/photos/<檔名>` 並通過身分檢查才取得。
+
+## 示範資料
+
+為了讓醫護端的畫面有足夠的病人可看，`backend/seed_demo.py` 會建立一批 `demo_` 開頭的示範帳號：
+
+```bash
+python backend/seed_demo.py            # 新增示範病人（已存在就略過）
+python backend/seed_demo.py --reset    # 先清掉舊的示範資料再重建
+```
+
+病人姓名為虛構，血糖以常態分布抽樣並刻意讓部分帳號落在控制目標之外，
+好呈現「飯前偏高」「飯後偏高」「久未記錄」等狀況；餐點照片取自本專題自己拍攝、
+未進入訓練集的餐盤照片（`training/foodgroups/test_tray_todo`），份數與辨識框由模型實際推論得到。
+示範帳號的密碼為隨機產生且不留存，需要登入時用 `manage.py set-password` 自行設定。
 
 病人清單上的「需要關注」標記，依據是 `backend/app.py` 裡的兩個設定：超過 `INACTIVE_DAYS`（預設 3 天）沒有任何紀錄，或平均血糖超出 `GLUCOSE_REF`。
 

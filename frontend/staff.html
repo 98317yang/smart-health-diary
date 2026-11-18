@@ -114,7 +114,6 @@
         <div class="stat-card stat-card-warn">
           <div class="stat-label"><i class="bi bi-exclamation-circle"></i>需要關注</div>
           <div class="stat-value" id="statWatch">—</div>
-          <div class="stat-foot" id="watchHint">&nbsp;</div>
         </div>
       </div>
 
@@ -167,7 +166,7 @@
         <article class="patient-card${p.inactive || p.glucose_flags.length ? ' needs-watch' : ''}">
           <div class="pc-head">
             <div>
-              <h3>${escapeHtml(name)}</h3>
+              <h3>${escapeHtml(name)} <span class="pc-meta">${escapeHtml(formatAgeGender(p.age, p.gender))}</span></h3>
               <p class="pc-sub">${escapeHtml(p.username)} · 最近記錄 ${escapeHtml(lastSeen(p))}</p>
             </div>
             <div class="pc-tags">${flags}${stale}${never}</div>
@@ -209,7 +208,6 @@
       .then(() => apiFetch('/api/staff/patients?days=7'))
       .then(d => {
         data = d;
-        const ref = d.reference;
         document.getElementById('rangeText').textContent =
           `最近 ${d.days} 天（${shortDate(d.start)}–${shortDate(d.end)}）`;
         document.getElementById('statTotal').innerHTML = `${d.patients.length}<small>人</small>`;
@@ -217,8 +215,6 @@
         document.getElementById('statActive').innerHTML = `${active}<small>人</small>`;
         const watch = d.patients.filter(p => p.inactive || p.glucose_flags.length).length;
         document.getElementById('statWatch').innerHTML = `${watch}<small>人</small>`;
-        document.getElementById('watchHint').textContent =
-          `${d.inactive_days} 天以上沒記錄，或平均血糖超出 飯前 ${ref.pre_low}–${ref.pre_high}、飯後 ${ref.post_low}–${ref.post_high} mg/dL`;
         render();
         document.getElementById('search').addEventListener('input', render);
         document.getElementById('onlyWatch').addEventListener('change', render);

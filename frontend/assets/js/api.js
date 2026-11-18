@@ -17,10 +17,18 @@ function homeFor(role) {
   return role === 'staff' ? 'staff.html' : 'health.html';
 }
 
+// 這一頁是否需要登入、需要哪個角色；由 requireLogin 設定，供上一頁快取的檢查使用
+let pageNeedsAuth = false;
+let pageRole = null;
+
 // 需要登入的頁面呼叫：未登入就導向登入頁
 // role 給定時（'patient' 或 'staff'），角色不符會被導回自己的起始頁，
 // 避免病人開到醫護頁面、或醫護開到記錄頁面卻無法使用
 async function requireLogin(role) {
+  pageNeedsAuth = true;
+  pageRole = role || null;
+  // 確認身分之前先不顯示內容，避免登出後按上一頁時閃過頁面骨架
+  document.body.classList.add('needs-auth');
   let me;
   try {
     me = await apiFetch('/api/me');
@@ -32,6 +40,7 @@ async function requireLogin(role) {
     window.location.replace(homeFor(me.role));
     throw new Error('角色不符');
   }
+  document.body.classList.add('auth-ok');
   return me;
 }
 
@@ -50,6 +59,21 @@ function todayISO() {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 10);
+}
+
+// 生日與性別的顯示格式（個人資料與醫護端共用，避免兩邊寫法不一致）
+function formatBirthday(birthday, age) {
+  if (!birthday) return '（未填寫）';
+  const [y, m, d] = String(birthday).split('-');
+  const text = `${Number(y)} 年 ${Number(m)} 月 ${Number(d)} 日`;
+  return age === null || age === undefined ? text : `${text}（${age} 歲）`;
+}
+
+function formatAgeGender(age, gender) {
+  const parts = [];
+  if (age !== null && age !== undefined) parts.push(`${age} 歲`);
+  if (gender) parts.push(gender);
+  return parts.length ? parts.join('・') : '未填基本資料';
 }
 
 // 食物類別對應的顏色（健康日誌與醫護端共用）
@@ -181,6 +205,20 @@ function markActiveNav() {
     a.classList.toggle('active', a.getAttribute('href') === page);
   });
 }
+
+// 瀏覽器的「上一頁」會從快取還原整個頁面，不會重新執行頁面程式，
+// 因此登出後按上一頁仍會看到原本的內容。這裡在還原時重新確認登入狀態。
+window.addEventListener('pageshow', async e => {
+  if (!e.persisted) return;
+  let s = { logged_in: false };
+  try { s = await apiFetch('/api/session'); } catch (_) { /* 後端沒回應時當作未登入 */ }
+  if (pageNeedsAuth && (!s.logged_in || (pageRole && s.role !== pageRole))) {
+    document.body.classList.remove('auth-ok');  // 先遮住內容再導向
+    window.location.replace(s.logged_in ? homeFor(s.role) : 'login.html');
+    return;
+  }
+  initAuthNav();  // 可能在別的分頁登入或登出，導覽列要跟著更新
+});
 
 (function () {
   const run = () => { initAuthNav(); markActiveNav(); };

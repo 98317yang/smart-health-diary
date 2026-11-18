@@ -9,6 +9,7 @@
     python backend/manage.py create-staff <帳號>       建立醫護帳號（會詢問密碼）
     python backend/manage.py set-role <帳號> staff     將既有帳號改為醫護
     python backend/manage.py set-role <帳號> patient   改回病人
+    python backend/manage.py set-password <帳號>       重設某個帳號的密碼（會詢問密碼）
 
 資料庫位置預設與後端相同，可用環境變數 SHD_DB 指定。
 """
@@ -63,6 +64,20 @@ def cmd_create_staff(args, db):
     print(f"已建立醫護帳號 {args.username}。")
 
 
+def cmd_set_password(args, db):
+    if db.execute("SELECT 1 FROM users WHERE username = ?", (args.username,)).fetchone() is None:
+        sys.exit(f"找不到帳號 {args.username}。")
+    password = getpass.getpass("請輸入新密碼（至少 6 個字元，輸入時不會顯示）：")
+    if len(password) < 6:
+        sys.exit("密碼至少需要 6 個字元。")
+    if password != getpass.getpass("請再輸入一次："):
+        sys.exit("兩次輸入的密碼不同。")
+    db.execute("UPDATE users SET password_hash = ? WHERE username = ?",
+               (generate_password_hash(password), args.username))
+    db.commit()
+    print(f"已更新 {args.username} 的密碼。")
+
+
 def cmd_set_role(args, db):
     user = db.execute("SELECT role FROM users WHERE username = ?", (args.username,)).fetchone()
     if user is None:
@@ -87,6 +102,9 @@ def main():
     p_create.add_argument("username")
     p_create.add_argument("--name", default=None, help="顯示名稱，例如：王護理師")
     p_create.set_defaults(func=cmd_create_staff)
+    p_pw = sub.add_parser("set-password", help="重設某個帳號的密碼")
+    p_pw.add_argument("username")
+    p_pw.set_defaults(func=cmd_set_password)
     p_role = sub.add_parser("set-role", help="變更既有帳號的角色")
     p_role.add_argument("username")
     p_role.add_argument("role", choices=ROLES)
