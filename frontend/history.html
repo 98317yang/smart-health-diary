@@ -1,12 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>歷史資料</title>
-
-  <!-- Bootstrap Datepicker -->
+  <title>歷史資料｜智慧健康日誌</title>
   <!-- Favicons -->
   <link href="assets/img/favicon.png" rel="icon">
   <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
@@ -26,61 +24,13 @@
 
   <!-- Main CSS File -->
   <link href="assets/css/main.css" rel="stylesheet">
-
-  <style>
-    body {
-      background-color: #f0f4f8;
-      font-family: 'Roboto', sans-serif;
-    }
-
-    .form-section {
-      background: #ffffff;
-      padding: 30px;
-      border-radius: 10px;
-      margin-bottom: 30px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      transition: transform 0.3s;
-    }
-
-    .form-section:hover {
-      transform: translateY(-5px);
-    }
-
-    .header {
-      text-align: center;
-      margin-top: 30px;
-      margin-bottom: 30px;
-    }
-
-    .cta-btn {
-      padding: 10px 20px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      text-decoration: none;
-      transition: background-color 0.3s;
-    }
-
-    .cta-btn:hover {
-      background-color: #0056b3;
-    }
-
-    canvas {
-      transition: transform 0.2s;
-    }
-
-    canvas:hover {
-      transform: scale(1.05);
-    }
-  </style>
+  <link href="assets/css/app.css" rel="stylesheet">
 
   <!-- Include Chart.js -->
-  <script src="assets/vendor/chartjs/chart.umd.min.js"></script>
 
 </head>
 
-<body class="index-page">
+<body class="index-page app-body">
 
   <header id="header" class="header sticky-top">
 
@@ -142,139 +92,183 @@
     </div>
   </header>
 
-  <div class="container">
-    <div class="header">
-      <h2 style="font-weight: bold;">我的歷史資料</h2>
+  <main class="app-main">
+    <div class="app-container">
+      <div class="page-head">
+        <div>
+          <h1>我的歷史資料</h1>
+          <p id="rangeText">最近 7 天</p>
+        </div>
+        <a href="health.html" class="btn-app btn-sm"><i class="bi bi-plus-lg"></i>新增紀錄</a>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-person-walking"></i>運動達成</div>
+          <div class="stat-value" id="statExercise">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-basket"></i>三碗蔬菜</div>
+          <div class="stat-value" id="statVeggie">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-droplet-half"></i>平均血糖</div>
+          <div class="stat-value" id="statGlucose">—</div>
+          <div class="stat-foot">飯前 / 飯後（mg/dL）</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-egg-fried"></i>平均每日醣類</div>
+          <div class="stat-value" id="statCarbs">—</div>
+        </div>
+      </div>
+
+      <section class="app-card">
+        <div class="card-title-row">
+          <span class="card-icon"><i class="bi bi-calendar-check"></i></span>
+          <div><h2>每日達成情形</h2><p class="card-sub">✓ 達成　✕ 未達成　－ 沒有填寫</p></div>
+        </div>
+        <div class="week-strip" id="weekStrip"></div>
+      </section>
+
+      <section class="app-card">
+        <div class="card-title-row">
+          <span class="card-icon"><i class="bi bi-activity"></i></span>
+          <div><h2>血糖變化</h2><p class="card-sub">每日平均（mg/dL）</p></div>
+        </div>
+        <div class="chart-box"><canvas id="lineChart"></canvas></div>
+      </section>
+
+      <section class="app-card">
+        <div class="card-title-row">
+          <span class="card-icon"><i class="bi bi-bar-chart"></i></span>
+          <div><h2>每日醣類攝取</h2><p class="card-sub">有拍照記錄的餐點（公克）</p></div>
+        </div>
+        <div class="chart-box"><canvas id="carbsChart"></canvas></div>
+      </section>
+
+      <section class="app-card">
+        <div class="card-title-row">
+          <span class="card-icon"><i class="bi bi-list-ul"></i></span>
+          <div><h2>最近的餐點紀錄</h2></div>
+        </div>
+        <div id="recentMeals" class="empty-state">載入中…</div>
+      </section>
     </div>
+  </main>
 
-    <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
-      <canvas id="exercisePieChart" style="max-width: 400px; max-height: 400px;"></canvas>
-      <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 定期運動、穩定生活，讓健康成為習慣！”</p>
-    </div>
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="assets/vendor/chartjs/chart.umd.min.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script>
+    const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
+    const shortDate = iso => iso.slice(5).replace('-', '/');
+    const weekday = iso => WEEKDAY[new Date(iso + 'T00:00:00').getDay()];
+    const mean = xs => { const v = xs.filter(x => x !== null && x !== undefined); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+    const unit = u => `<small>${u}</small>`;
 
-    <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
-      <canvas id="lineChart" style="max-width: 600px; max-height: 400px;"></canvas>
-      <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 血糖穩定，生活無慮，健康從自我管理開始 ”</p>
-    </div>
+    function stats(data) {
+      const days = data.dates.length;
+      document.getElementById('rangeText').textContent = `最近 ${days} 天（${shortDate(data.start)}–${shortDate(data.end)}）`;
+      document.getElementById('statExercise').innerHTML = `${data.exercise.done}${unit(`/ ${days} 天`)}`;
+      document.getElementById('statVeggie').innerHTML = `${data.veggie.done}${unit(`/ ${days} 天`)}`;
+      const pre = mean(data.glucose_pre), post = mean(data.glucose_post);
+      document.getElementById('statGlucose').innerHTML = (pre === null && post === null) ? '—' :
+        `${pre === null ? '—' : Math.round(pre)}<small>/</small> ${post === null ? '—' : Math.round(post)}`;
+      const carbs = mean(data.carbs_g);
+      document.getElementById('statCarbs').innerHTML = carbs === null ? '—' : `${Math.round(carbs)}${unit('公克')}`;
+    }
 
-    <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
-      <canvas id="exercisePieChart2" style="max-width: 400px; max-height: 400px;"></canvas>
-      <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 每日三碗蔬菜，守護血糖更有力！”</p>
-    </div>
+    function weekStrip(data) {
+      const cell = v => v === null || v === undefined ? '<div class="ws-cell" title="沒有填寫">－</div>'
+        : v ? '<div class="ws-cell done" title="達成"><i class="bi bi-check-lg"></i></div>'
+            : '<div class="ws-cell miss" title="未達成"><i class="bi bi-x-lg"></i></div>';
+      let html = '<div></div>' + data.dates.map(d => `<div class="ws-head">${shortDate(d)}<br>週${weekday(d)}</div>`).join('');
+      html += '<div class="ws-label">運動</div>' + data.exercise_daily.map(cell).join('');
+      html += '<div class="ws-label">蔬菜</div>' + data.veggie_daily.map(cell).join('');
+      document.getElementById('weekStrip').innerHTML = html;
+    }
 
-    <div class="form-section" style="display: flex; flex-direction: column; align-items: center;">
-      <canvas id="carbsChart" style="max-width: 600px; max-height: 400px;"></canvas>
-      <p style="margin-top: 19px; font-size: 14px; font-weight: bold; color: #5a5a5add;">“ 醣類吃得剛剛好，血糖跟著穩穩走 ”</p>
-    </div>
+    function emptyChart(canvasId, text) {
+      document.getElementById(canvasId).parentElement.outerHTML = `<div class="empty-state">${text}</div>`;
+    }
 
-    <div class="form-section">
-      <h5 style="font-weight: bold;">最近的餐點紀錄</h5>
-      <div id="recentMeals" class="text-muted">載入中…</div>
-    </div>
+    const baseOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 14 }, boxWidth: 14 } } },
+      scales: { x: { grid: { display: false }, ticks: { font: { size: 13 } } }, y: { ticks: { font: { size: 13 } } } }
+    };
 
-    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/vendor/aos/aos.js"></script>
-    <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
-    <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
-
-    <script src="assets/js/main.js"></script>
-    <script src="assets/js/api.js"></script>
-    <script>
-      const shortDate = iso => iso.slice(5).replace('-', '/');
-
-      function pieChart(canvasId, title, rate) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
-        const hasData = rate.answered_days > 0;
-        new Chart(ctx, {
-          type: 'pie',
-          data: {
-            labels: hasData ? ['達成', '未達成'] : ['尚無紀錄'],
-            datasets: [{
-              data: hasData ? [rate.done, rate.answered_days - rate.done] : [1],
-              backgroundColor: hasData ? ['rgb(255, 205, 86)', 'rgb(75, 192, 192)'] : ['#ddd'],
-              borderWidth: 4
-            }]
-          },
-          options: {
-            responsive: true,
-            animation: { duration: 1500 },
-            plugins: {
-              legend: { position: 'top' },
-              title: { display: true, text: title, color: '#555', font: { size: 22 } },
-              tooltip: { enabled: hasData, callbacks: {
-                label: item => `${item.label}：${item.raw} 天（共 ${rate.answered_days} 天有填寫）`
-              } }
-            }
-          }
-        });
+    function lineChart(data) {
+      if (mean(data.glucose_pre) === null && mean(data.glucose_post) === null) {
+        emptyChart('lineChart', '這 7 天還沒有血糖紀錄。'); return;
       }
+      new Chart(document.getElementById('lineChart'), {
+        type: 'line',
+        data: {
+          labels: data.dates.map(shortDate),
+          datasets: [
+            { label: '飯前血糖', data: data.glucose_pre, borderColor: '#2a9a9f', backgroundColor: '#2a9a9f',
+              spanGaps: true, tension: 0.25, pointRadius: 5, borderWidth: 3 },
+            { label: '飯後血糖', data: data.glucose_post, borderColor: '#cf5e48', backgroundColor: '#cf5e48',
+              spanGaps: true, tension: 0.25, pointRadius: 5, borderWidth: 3 }
+          ]
+        },
+        options: baseOptions
+      });
+    }
 
-      function lineChart(data) {
-        new Chart(document.getElementById('lineChart').getContext('2d'), {
-          type: 'line',
-          data: {
-            labels: data.dates.map(shortDate),
-            datasets: [
-              { label: '飯前血糖 (mg/dl)', data: data.glucose_pre, borderColor: 'rgb(54, 162, 235)',
-                backgroundColor: 'rgba(54, 162, 235, 0.2)', spanGaps: true, tension: 0.2 },
-              { label: '飯後血糖 (mg/dl)', data: data.glucose_post, borderColor: 'rgb(255, 99, 132)',
-                backgroundColor: 'rgba(255, 99, 132, 0.2)', spanGaps: true, tension: 0.2 }
-            ]
-          },
-          options: {
-            responsive: true,
-            plugins: { title: { display: true, text: '近 7 日血糖紀錄（mg/dl）', color: '#555', font: { size: 22 } } },
-            scales: {
-              y: { title: { display: true, text: '血糖值 (mg/dl)' } },
-              x: { title: { display: true, text: '日期' } }
-            }
-          }
-        });
+    function carbsChart(data) {
+      if (mean(data.carbs_g) === null) {
+        emptyChart('carbsChart', '這 7 天還沒有拍照記錄的餐點。'); return;
       }
+      new Chart(document.getElementById('carbsChart'), {
+        type: 'bar',
+        data: {
+          labels: data.dates.map(shortDate),
+          datasets: [{ label: '醣類（公克）', data: data.carbs_g, backgroundColor: '#e2b25c', borderRadius: 6, maxBarThickness: 46 }]
+        },
+        options: { ...baseOptions, plugins: { legend: { display: false } },
+                   scales: { ...baseOptions.scales, y: { beginAtZero: true, ticks: { font: { size: 13 } } } } }
+      });
+    }
 
-      function carbsChart(data) {
-        new Chart(document.getElementById('carbsChart').getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels: data.dates.map(shortDate),
-            datasets: [{ label: '每日醣類 (公克)', data: data.carbs_g, backgroundColor: 'rgba(255, 159, 64, 0.6)' }]
-          },
-          options: {
-            responsive: true,
-            plugins: { title: { display: true, text: '近 7 日醣類攝取（有拍照記錄的餐點）', color: '#555', font: { size: 22 } } },
-            scales: { y: { beginAtZero: true, title: { display: true, text: '醣類 (公克)' } } }
-          }
-        });
-      }
+    function recentMeals(rows) {
+      const box = document.getElementById('recentMeals');
+      if (rows.length === 0) { box.textContent = '最近還沒有上傳餐點照片。'; return; }
+      box.className = '';
+      const fmt = v => v === null || v === undefined ? '—' : `${Math.round(v * 10) / 10}`;
+      box.innerHTML = '<table class="meal-table"><thead><tr><th>日期</th><th>餐別</th>' +
+        '<th class="num hide-sm">全穀雜糧</th><th class="num hide-sm">蔬菜</th><th class="num hide-sm">豆魚蛋肉</th>' +
+        '<th class="num">醣類</th><th class="num">熱量</th></tr></thead><tbody>' +
+        rows.map(r => `<tr><td>${escapeHtml(shortDate(r.log_date))}</td><td>${escapeHtml(r.meal_type || '—')}</td>` +
+          `<td class="num hide-sm">${fmt(r.grain_servings)} 份</td><td class="num hide-sm">${fmt(r.veg_servings)} 份</td>` +
+          `<td class="num hide-sm">${fmt(r.protein_servings)} 份</td>` +
+          `<td class="num">${r.carbs_g === null ? '—' : Math.round(r.carbs_g) + ' g'}</td>` +
+          `<td class="num">${r.total_kcal === null ? '—' : Math.round(r.total_kcal) + ' 大卡'}</td></tr>`).join('') +
+        '</tbody></table>' +
+        '<p class="note">份數由使用者確認；醣類與熱量依國民健康署食物代換表換算。</p>';
+    }
 
-      function recentMeals(rows) {
-        const box = document.getElementById('recentMeals');
-        if (rows.length === 0) { box.textContent = '最近 7 天還沒有上傳餐點照片。'; return; }
-        box.classList.remove('text-muted');
-        const fmt = v => v === null || v === undefined ? '—' : `${Math.round(v * 10) / 10} 份`;
-        box.innerHTML = '<table class="table table-sm"><thead><tr><th>日期</th><th>餐別</th>' +
-          '<th>全穀雜糧</th><th>蔬菜</th><th>豆魚蛋肉</th><th>醣類</th><th>熱量</th></tr></thead><tbody>' +
-          rows.map(r => `<tr><td>${escapeHtml(r.log_date)}</td><td>${escapeHtml(r.meal_type || '')}</td>` +
-            `<td>${fmt(r.grain_servings)}</td><td>${fmt(r.veg_servings)}</td><td>${fmt(r.protein_servings)}</td>` +
-            `<td>${r.carbs_g === null ? '—' : Math.round(r.carbs_g) + ' g'}</td>` +
-            `<td>${r.total_kcal === null ? '—' : Math.round(r.total_kcal) + ' 大卡'}</td></tr>`).join('') +
-          '</tbody></table>' +
-          '<p class="text-muted" style="font-size: 13px;">份數由使用者確認；醣類與熱量依國民健康署食物代換表換算。</p>';
-      }
-
-      requireLogin()
-        .then(() => apiFetch('/api/history?days=7'))
-        .then(data => {
-          recentMeals(data.recent_meals);
-          if (typeof Chart === 'undefined') return;  // 圖表套件載入失敗時，至少顯示表格
-          pieChart('exercisePieChart', '近 7 日運動 30 分鐘達成情形', data.exercise);
-          lineChart(data);
-          carbsChart(data);
-          pieChart('exercisePieChart2', '近 7 日三碗蔬菜達成情形', data.veggie);
-        })
-        .catch(err => { if (err.status !== 401) alert(err.message); });
-    </script>
-
+    requireLogin()
+      .then(() => apiFetch('/api/history?days=7'))
+      .then(data => {
+        stats(data);
+        weekStrip(data);
+        recentMeals(data.recent_meals);
+        if (typeof Chart === 'undefined') return;  // 圖表套件載入失敗時，仍顯示其他內容
+        lineChart(data);
+        carbsChart(data);
+      })
+      .catch(err => {
+        if (err.status === 401) return;
+        document.getElementById('recentMeals').textContent = `讀取資料失敗：${err.message}`;
+      });
+  </script>
 </body>
 
 </html>

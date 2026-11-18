@@ -204,7 +204,7 @@ def create_log():
         return error("餐別必須是早餐、午餐或晚餐")
 
     photo = request.files.get("photo")
-    detections, groups, photo_filename = [], [], None
+    detections, groups, photo_filename, image_size = [], [], None, None
     if photo and photo.filename:
         ext = Path(photo.filename).suffix.lower()
         if ext not in ALLOWED_EXT:
@@ -213,7 +213,7 @@ def create_log():
             return error("伺服器未載入辨識模型，暫時無法分析照片", 503)
         image_bytes = photo.read()
         try:
-            detections = detector.detect(image_bytes)
+            detections, image_size = detector.detect(image_bytes, return_size=True)
         except ValueError as e:
             return error(str(e))
         groups = detector.summarize(detections)
@@ -243,6 +243,7 @@ def create_log():
         [(cur.lastrowid, d["label"], d["label_zh"], d["confidence"], *d["box"]) for d in detections])
     db.commit()
     return jsonify({"message": "已儲存", "log_id": cur.lastrowid, "detections": detections,
+                    "image_size": image_size,
                     "groups": groups, "nutrition": totals}), 201
 
 
@@ -332,6 +333,8 @@ def history():
         "carbs_g": [d["carbs"] for d in daily.values()],
         "exercise": rate("exercise"),
         "veggie": rate("veggie"),
+        "exercise_daily": [d["exercise"] for d in daily.values()],
+        "veggie_daily": [d["veggie"] for d in daily.values()],
         "recent_meals": [dict(r) for r in recent],
     })
 

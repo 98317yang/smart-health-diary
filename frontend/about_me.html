@@ -1,72 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>台東聖母醫院糖尿病飲食管理</title>
+  <title>個人資料｜智慧健康日誌</title>
   <meta name="description" content="">
   <meta name="keywords" content="">
-
-<!-- 字體 -->
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-
-<!-- 自定義CSS -->
-<style>
-  body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #f4f7f6;
-  }
-  .form-container {
-    background-color: #fff;
-    padding: 40px;
-    margin-top: 50px;
-    border-radius: 8px;
-    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
-  }
-  .form-container h3 {
-    margin-bottom: 30px;
-    font-weight: 500;
-    color: #333;
-  }
-  .form-container input[type="text"],
-  .form-container input[type="password"] {
-    margin-bottom: 20px;
-    padding: 10px;
-    font-size: 16px;
-  }
-  .form-container input[type="submit"] {
-    background-color: #28a745;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    font-size: 18px;
-    cursor: pointer;
-  }
-  .form-container input[type="submit"]:hover {
-    background-color: #218838;
-  }
-  .form-container a {
-    text-decoration: none;
-    color: #007bff;
-  }
-  .form-container a:hover {
-    text-decoration: underline;
-  }
-  .form-container .btn-outline-register {
-    display: inline-block;
-    padding: 6px 28px;
-    border: 1px solid #28a745;
-    border-radius: 5px;
-    color: #28a745;
-  }
-  .form-container .btn-outline-register:hover {
-    background-color: #28a745;
-    color: #fff;
-    text-decoration: none;
-  }
-</style>
 
   <!-- Favicons -->
   <link href="assets/img/favicon.png" rel="icon">
@@ -87,6 +28,7 @@
 
   <!-- Main CSS File -->
   <link href="assets/css/main.css" rel="stylesheet">
+  <link href="assets/css/app.css" rel="stylesheet">
 
   <!-- =======================================================
   * Template Name: Medicio
@@ -97,7 +39,7 @@
   ======================================================== -->
 </head>
 
-<body class="index-page">
+<body class="index-page app-body">
 
   <header id="header" class="header sticky-top">
 
@@ -162,50 +104,47 @@
 
   </header>
 
-  <main class="main">
+  <main class="app-main">
+    <div class="app-container">
+      <div class="app-card auth-card">
+        <div class="auth-icon"><i class="bi bi-person"></i></div>
+        <h1 id="pTitle">個人資料</h1>
+        <p class="auth-sub" id="pSub">&nbsp;</p>
 
+        <dl class="profile-list">
+          <div><dt>姓名</dt><dd id="pName">—</dd></div>
+          <div><dt>帳號</dt><dd id="pUser">—</dd></div>
+          <div><dt>註冊日期</dt><dd id="pCreated">—</dd></div>
+        </dl>
 
-    <div class="container">
-
-        <div class="form-container mx-auto col-lg-4 col-md-6 col-sm-8">
-        
-            
-            <img src="assets/img/me.jpg" class="img-fluid" alt="" mx-auto >
-            <h3 class="text-center">我的個人資料</h3>
-        
-    
-    
-          <dl class="row mt-3" id="profile">
-            <dt class="col-4">姓名</dt><dd class="col-8" id="pName">—</dd>
-            <dt class="col-4">帳號</dt><dd class="col-8" id="pUser">—</dd>
-            <dt class="col-4">註冊時間</dt><dd class="col-8" id="pCreated">—</dd>
-          </dl>
-          <div class="d-grid"><button type="button" class="btn btn-outline-secondary" onclick="logout()">登出</button></div>
-    
-        
+        <div class="quick-links">
+          <a href="health.html" class="btn-app btn-ghost btn-sm"><i class="bi bi-journal-plus"></i> 健康日誌</a>
+          <a href="history.html" class="btn-app btn-ghost btn-sm"><i class="bi bi-graph-up"></i> 歷史資料</a>
         </div>
+        <button type="button" class="btn-app btn-ghost btn-block btn-sm" onclick="logout()"><i class="bi bi-box-arrow-right"></i> 登出</button>
       </div>
-
-</main>
-
-    
+    </div>
+  </main>
 
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/vendor/php-email-form/validate.js"></script>
   <script src="assets/vendor/aos/aos.js"></script>
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
-  <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
   <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
-
-  <!-- Main JS File -->
   <script src="assets/js/main.js"></script>
-
   <script src="assets/js/api.js"></script>
   <script>
+    // 資料庫存的是 UTC 時間，轉成使用者當地日期
+    function localDate(ts) {
+      const d = new Date(String(ts).replace(' ', 'T') + 'Z');
+      return isNaN(d) ? ts : d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
     requireLogin().then(me => {
+      document.getElementById('pTitle').textContent = me.display_name || me.username;
+      document.getElementById('pSub').textContent = '歡迎回來，祝你今天血糖穩定';
       document.getElementById('pName').textContent = me.display_name || '（未填寫）';
       document.getElementById('pUser').textContent = me.username;
-      document.getElementById('pCreated').textContent = me.created_at;
+      document.getElementById('pCreated').textContent = localDate(me.created_at);
     }).catch(() => {});
   </script>
 </body>

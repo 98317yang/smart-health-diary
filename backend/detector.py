@@ -1,4 +1,5 @@
 """YOLOv9 菜色偵測器：伺服器啟動時載入一次模型，之後每次請求直接推論。"""
+import io
 import sys
 import threading
 from pathlib import Path
@@ -6,6 +7,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 BACKEND_DIR = Path(__file__).resolve().parent
 YOLO_DIR = BACKEND_DIR / "yolov9"
@@ -33,11 +35,24 @@ class FoodDetector:
         self._lock = threading.Lock()
         self.model.warmup(imgsz=(1, 3, *self.imgsz))
 
-    def detect(self, image_bytes):
-        """回傳偵測到的每個物件：英文/中文標籤、信心值、框座標（原圖像素）。"""
-        img0 = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-        if img0 is None:
+    @staticmethod
+    def decode(image_bytes):
+        """讀取圖片並依 EXIF 轉正（手機照片常以 EXIF 記錄方向），回傳 BGR 陣列。
+
+        轉正後的座標系與瀏覽器顯示照片時一致，前端才能把框畫在正確位置。
+        """
+        try:
+            pil = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
+        except (UnidentifiedImageError, OSError):
             raise ValueError("無法讀取圖片，請確認檔案格式")
+        return cv2.cvtColor(np.asarray(pil), cv2.COLOR_RGB2BGR)
+
+    def detect(self, image_bytes, return_size=False):
+        """回傳偵測到的每個物件：英文/中文標籤、信心值、框座標（轉正後的原圖像素）。
+
+        return_size=True 時另外回傳圖片尺寸 (寬, 高)。
+        """
+        img0 = self.decode(image_bytes)
 
         im = letterbox(img0, self.imgsz, stride=self.stride, auto=self.model.pt)[0]
         im = im.transpose((2, 0, 1))[::-1]  # HWC->CHW, BGR->RGB
@@ -60,6 +75,8 @@ class FoodDetector:
                     "confidence": round(conf, 3),
                     "box": [int(v) for v in xyxy],
                 })
+        if return_size:
+            return results, [int(img0.shape[1]), int(img0.shape[0])]
         return results
 
     def summarize(self, detections):
