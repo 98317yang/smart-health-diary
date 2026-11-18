@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     username      TEXT    NOT NULL UNIQUE,
     password_hash TEXT    NOT NULL,
     display_name  TEXT,
+    role          TEXT    NOT NULL DEFAULT 'patient',   -- patient 病人 / staff 醫護人員
     created_at    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>病人管理｜智慧健康日誌</title>
+  <!-- Favicons -->
+  <link href="assets/img/favicon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="assets/css/main.css" rel="stylesheet">
+  <link href="assets/css/app.css" rel="stylesheet">
+
+  <!-- Include Chart.js -->
+
+</head>
+
+<body class="index-page app-body">
+
+  <header id="header" class="header sticky-top">
+
+    <div class="topbar d-flex align-items-center">
+      <div class="container d-flex justify-content-center justify-content-md-between">
+        <div class="d-none d-md-flex align-items-center">
+          <i class="bi bi-clock me-1"></i> 記得三餐準時紀錄健康日誌。
+        </div>
+        <div class="d-flex align-items-center">
+          <i class="bi bi-phone me-1"></i> 聯絡專線：089-322-833
+        </div>
+      </div>
+    </div><!-- End Top Bar -->
+
+    <div class="branding d-flex align-items-center">
+
+      <div class="container position-relative d-flex align-items-center justify-content-end">
+        <a href="index.html" class="logo d-flex align-items-center me-auto">
+          <img src="assets/img/logo.png" alt="">
+          <!-- Uncomment the line below if you also wish to use a text logo -->
+          <!-- <h1 class="sitename">Medicio</h1>  -->
+        </a>
+
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="index.html">機構簡介</a></li>
+            <li class="auth-user auth-patient"><a href="health.html">健康日誌</a></li>
+            <li class="auth-user auth-patient"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-staff"><a href="staff.html">病人管理</a></li>
+            <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><span class="handout-offline">認識糖尿病</span></li>
+                <li><span class="handout-offline">糖尿病病人之運動</span></li>
+                <li><span class="handout-offline">糖尿病患之足部照護</span></li>
+                <li><span class="handout-offline">糖尿病之自我監測血糖</span></li>
+                <li><span class="handout-offline">糖尿病之低血糖處理</span></li>
+                <li><span class="handout-note">單張由合作醫院提供，未隨程式碼公開</span></li>
+                </ul>
+            </li>
+            <li class="dropdown dropdown-end"><a><span>相關網站</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><a href="https://www.hpa.gov.tw/Pages/List.aspx?nodeid=359">國民健康署</a></li>               
+                <li><a href="https://www.cdc.gov.tw">疾管署</a></li>
+                <li><a href="https://health99.hpa.gov.tw">健康九九</a></li>
+                <li><a href="https://www.careonline.com.tw/2019/05/diabetes.html">照護線上</a></li>
+                <li><a href="https://www.dmcare.org.tw">財團法人糖尿病關懷基金會</a></li>
+                <li><a href="https://www.tade.org.tw">社團法人中華民國糖尿病衛教學會</a></li>
+              </ul>
+            </li>
+            
+            
+            <li class="auth-guest"><a href="login.html">登入</a></li>
+            <li class="auth-user"><a href="#" onclick="logout(); return false;">登出</a></li>
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+
+        <a class="cta-btn profile-btn auth-user" href="about_me.html" title="個人資料" aria-label="個人資料"><i class="bi bi-person-circle"></i></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="app-container app-container-wide">
+      <div class="page-head">
+        <div>
+          <h1>病人管理</h1>
+          <p id="rangeText">最近 7 天</p>
+        </div>
+      </div>
+
+      <div class="stat-grid stat-grid-3">
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-people"></i>病人總數</div>
+          <div class="stat-value" id="statTotal">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-journal-check"></i>近 7 天有記錄</div>
+          <div class="stat-value" id="statActive">—</div>
+        </div>
+        <div class="stat-card stat-card-warn">
+          <div class="stat-label"><i class="bi bi-exclamation-circle"></i>需要關注</div>
+          <div class="stat-value" id="statWatch">—</div>
+          <div class="stat-foot" id="watchHint">&nbsp;</div>
+        </div>
+      </div>
+
+      <section class="app-card">
+        <div class="list-toolbar">
+          <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="search" id="search" class="form-control" placeholder="搜尋姓名或帳號" aria-label="搜尋病人">
+          </div>
+          <div class="choice choice-inline">
+            <input type="checkbox" id="onlyWatch">
+            <label for="onlyWatch"><i class="bi bi-funnel"></i>只看需要關注</label>
+          </div>
+        </div>
+        <div id="patientList" class="empty-state">載入中…</div>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script>
+    let data = null;
+
+    const shortDate = iso => iso.slice(5).replace('-', '/');
+    const fmt = v => v === null || v === undefined ? '—' : Math.round(v);
+
+    // 距離最後一筆紀錄多久，用病人看得懂的說法呈現
+    function lastSeen(p) {
+      if (p.last_log_date === null) return '從未記錄';
+      const d = p.days_since_log;
+      const when = d === 0 ? '今天' : d === 1 ? '昨天' : `${d} 天前`;
+      return `${shortDate(p.last_log_date)}（${when}）`;
+    }
+
+    function card(p) {
+      const name = p.display_name || p.username;
+      const flags = p.glucose_flags.map(f => `<span class="tag tag-warn">${escapeHtml(f)}</span>`).join('');
+      const stale = p.inactive && p.last_log_date !== null
+        ? `<span class="tag tag-mute">${p.days_since_log} 天沒記錄</span>` : '';
+      const never = p.last_log_date === null ? '<span class="tag tag-mute">從未記錄</span>' : '';
+      const g = (v, bad) => `<strong class="${bad ? 'is-out' : ''}">${fmt(v)}</strong>`;
+      const preBad = p.glucose_flags.some(f => f.startsWith('飯前'));
+      const postBad = p.glucose_flags.some(f => f.startsWith('飯後'));
+      return `
+        <article class="patient-card${p.inactive || p.glucose_flags.length ? ' needs-watch' : ''}">
+          <div class="pc-head">
+            <div>
+              <h3>${escapeHtml(name)}</h3>
+              <p class="pc-sub">${escapeHtml(p.username)} · 最近記錄 ${escapeHtml(lastSeen(p))}</p>
+            </div>
+            <div class="pc-tags">${flags}${stale}${never}</div>
+          </div>
+          <div class="pc-stats">
+            <div><small>飯前血糖</small>${g(p.glucose_pre, preBad)}</div>
+            <div><small>飯後血糖</small>${g(p.glucose_post, postBad)}</div>
+            <div><small>運動</small><strong>${p.exercise_done}<span class="unit">/${p.exercise_days || 0} 天</span></strong></div>
+            <div><small>三碗蔬菜</small><strong>${p.veggie_done}<span class="unit">/${p.veggie_days || 0} 天</span></strong></div>
+            <div><small>餐點</small><strong>${p.meals}<span class="unit"> 筆</span></strong></div>
+          </div>
+          <a class="btn-app btn-ghost btn-sm" href="staff_patient.html?id=${p.id}">查看紀錄 <i class="bi bi-arrow-right"></i></a>
+        </article>`;
+    }
+
+    function render() {
+      const q = document.getElementById('search').value.trim().toLowerCase();
+      const onlyWatch = document.getElementById('onlyWatch').checked;
+      let list = data.patients;
+      if (q) list = list.filter(p => (p.display_name || '').toLowerCase().includes(q) || p.username.toLowerCase().includes(q));
+      if (onlyWatch) list = list.filter(p => p.inactive || p.glucose_flags.length);
+      // 需要關注的排前面，其次是最久沒記錄的
+      list = [...list].sort((a, b) => {
+        const w = (b.inactive || b.glucose_flags.length ? 1 : 0) - (a.inactive || a.glucose_flags.length ? 1 : 0);
+        if (w) return w;
+        return (b.days_since_log ?? 999) - (a.days_since_log ?? 999);
+      });
+      const box = document.getElementById('patientList');
+      if (list.length === 0) {
+        box.className = 'empty-state';
+        box.textContent = data.patients.length === 0 ? '目前還沒有病人註冊。' : '沒有符合條件的病人。';
+        return;
+      }
+      box.className = 'patient-list';
+      box.innerHTML = list.map(card).join('');
+    }
+
+    requireLogin('staff')
+      .then(() => apiFetch('/api/staff/patients?days=7'))
+      .then(d => {
+        data = d;
+        const ref = d.reference;
+        document.getElementById('rangeText').textContent =
+          `最近 ${d.days} 天（${shortDate(d.start)}–${shortDate(d.end)}）`;
+        document.getElementById('statTotal').innerHTML = `${d.patients.length}<small>人</small>`;
+        const active = d.patients.filter(p => !p.inactive).length;
+        document.getElementById('statActive').innerHTML = `${active}<small>人</small>`;
+        const watch = d.patients.filter(p => p.inactive || p.glucose_flags.length).length;
+        document.getElementById('statWatch').innerHTML = `${watch}<small>人</small>`;
+        document.getElementById('watchHint').textContent =
+          `${d.inactive_days} 天以上沒記錄，或平均血糖超出 飯前 ${ref.pre_low}–${ref.pre_high}、飯後 ${ref.post_high} mg/dL`;
+        render();
+        document.getElementById('search').addEventListener('input', render);
+        document.getElementById('onlyWatch').addEventListener('change', render);
+      })
+      .catch(err => {
+        if (err.status === 401 || err.message === '角色不符') return;
+        document.getElementById('patientList').textContent = `讀取資料失敗：${err.message}`;
+      });
+  </script>
+</body>
+
+</html>

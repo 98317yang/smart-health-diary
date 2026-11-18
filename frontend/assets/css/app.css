@@ -848,3 +848,259 @@ body.app-body {
     flex: 1 1 100%;
   }
 }
+
+/*--------------------------------------------------------------
+# 醫護端：病人清單與個別病人紀錄
+--------------------------------------------------------------*/
+.app-container-wide {
+  max-width: 1080px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: var(--app-muted);
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--app-accent-dark);
+}
+
+.stat-grid.stat-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stat-card.stat-card-warn {
+  border-color: #f0d3cd;
+  background: #fdf6f5;
+}
+
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-bottom: 18px;
+}
+
+.search-box {
+  position: relative;
+  flex: 1 1 240px;
+}
+
+.search-box i {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--app-muted);
+}
+
+.search-box .form-control {
+  padding-left: 44px;
+}
+
+.choice.choice-inline {
+  flex: 0 0 auto;
+}
+
+.choice.choice-inline label {
+  min-height: 52px;
+}
+
+.patient-list {
+  display: grid;
+  gap: 14px;
+}
+
+.patient-card {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.patient-card.needs-watch {
+  border-color: #efc4bd;
+  background: #fffaf9;
+}
+
+.pc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.pc-head h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.pc-sub {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: var(--app-muted);
+}
+
+.pc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tag-warn {
+  color: var(--app-danger);
+  background: #fbe7e4;
+}
+
+.tag-mute {
+  color: var(--app-muted);
+  background: #eef2f2;
+}
+
+.pc-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.pc-stats small {
+  display: block;
+  font-size: 13px;
+  color: var(--app-muted);
+  margin-bottom: 2px;
+}
+
+.pc-stats strong {
+  font-size: 21px;
+}
+
+.pc-stats .unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--app-muted);
+}
+
+.is-out {
+  color: var(--app-danger);
+}
+
+.patient-card .btn-app {
+  justify-self: start;
+}
+
+.range-picker {
+  min-width: 260px;
+  gap: 8px;
+}
+
+.range-picker .choice label {
+  min-height: 46px;
+  padding: 8px 12px;
+  font-size: 16px;
+}
+
+.strip-scroll {
+  overflow-x: auto;
+}
+
+.strip-scroll .week-strip {
+  min-width: 100%;
+}
+
+.chart-box.is-empty {
+  height: auto;
+}
+
+.meal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.meal-card {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.meal-card .result-photo {
+  margin-bottom: 12px;
+}
+
+.meal-card canvas {
+  max-height: 220px;
+}
+
+.meal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.meal-head strong {
+  font-size: 17px;
+}
+
+.meal-head span {
+  font-size: 15px;
+  color: var(--app-muted);
+}
+
+.meal-servings {
+  display: grid;
+  gap: 4px;
+  font-size: 15px;
+}
+
+.meal-servings .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 7px;
+}
+
+.meal-card .note {
+  margin-top: 10px;
+}
+
+@media (max-width: 767px) {
+  .stat-grid.stat-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .pc-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .pc-stats strong {
+    font-size: 19px;
+  }
+
+  .range-picker {
+    width: 100%;
+  }
+
+  .meal-grid {
+    grid-template-columns: 1fr;
+  }
+}

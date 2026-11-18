@@ -66,8 +66,9 @@
         <nav id="navmenu" class="navmenu">
           <ul>
             <li><a href="index.html">機構簡介</a></li>
-            <li class="auth-user"><a href="health.html">健康日誌</a></li>
-            <li class="auth-user"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-patient"><a href="health.html">健康日誌</a></li>
+            <li class="auth-user auth-patient"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-staff"><a href="staff.html">病人管理</a></li>
               <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
                 <ul>
                   <li><span class="handout-offline">認識糖尿病</span></li>
@@ -117,9 +118,12 @@
           <div><dt>註冊日期</dt><dd id="pCreated">—</dd></div>
         </dl>
 
-        <div class="quick-links">
+        <div class="quick-links auth-patient">
           <a href="health.html" class="btn-app btn-ghost btn-sm"><i class="bi bi-journal-plus"></i> 健康日誌</a>
           <a href="history.html" class="btn-app btn-ghost btn-sm"><i class="bi bi-graph-up"></i> 歷史資料</a>
+        </div>
+        <div class="auth-staff mb-3">
+          <a href="staff.html" class="btn-app btn-ghost btn-sm btn-block"><i class="bi bi-people"></i> 病人管理</a>
         </div>
         <button type="button" class="btn-app btn-ghost btn-block btn-sm" onclick="logout()"><i class="bi bi-box-arrow-right"></i> 登出</button>
       </div>
@@ -141,7 +145,8 @@
 
     requireLogin().then(me => {
       document.getElementById('pTitle').textContent = me.display_name || me.username;
-      document.getElementById('pSub').textContent = '歡迎回來，祝你今天血糖穩定';
+      document.getElementById('pSub').textContent =
+        me.role === 'staff' ? '醫護人員帳號' : '歡迎回來，祝你今天血糖穩定';
       document.getElementById('pName').textContent = me.display_name || '（未填寫）';
       document.getElementById('pUser').textContent = me.username;
       document.getElementById('pCreated').textContent = localDate(me.created_at);

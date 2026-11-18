@@ -66,8 +66,9 @@
         <nav id="navmenu" class="navmenu">
           <ul>
             <li><a href="index.html">機構簡介</a></li>
-            <li class="auth-user"><a href="health.html">健康日誌</a></li>
-            <li class="auth-user"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-patient"><a href="health.html">健康日誌</a></li>
+            <li class="auth-user auth-patient"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-staff"><a href="staff.html">病人管理</a></li>
               <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
                 <ul>
                   <li><span class="handout-offline">認識糖尿病</span></li>
@@ -146,7 +147,7 @@
       errBox.className = 'form-msg';
       btn.disabled = true; btn.textContent = '登入中…';
       try {
-        await apiFetch('/api/login', {
+        const res = await apiFetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -154,7 +155,7 @@
             password: document.getElementById('password').value
           })
         });
-        window.location.href = 'health.html';
+        window.location.href = homeFor(res.role);
       } catch (err) {
         errBox.textContent = err.message;
         errBox.className = 'form-msg is-error';

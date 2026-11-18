@@ -12,14 +12,27 @@ async function apiFetch(url, options = {}) {
   return body;
 }
 
+// 各角色登入後的起始頁
+function homeFor(role) {
+  return role === 'staff' ? 'staff.html' : 'health.html';
+}
+
 // 需要登入的頁面呼叫：未登入就導向登入頁
-async function requireLogin() {
+// role 給定時（'patient' 或 'staff'），角色不符會被導回自己的起始頁，
+// 避免病人開到醫護頁面、或醫護開到記錄頁面卻無法使用
+async function requireLogin(role) {
+  let me;
   try {
-    return await apiFetch('/api/me');
+    me = await apiFetch('/api/me');
   } catch (e) {
     if (e.status === 401) window.location.href = 'login.html';
     throw e;
   }
+  if (role && me.role !== role) {
+    window.location.replace(homeFor(me.role));
+    throw new Error('角色不符');
+  }
+  return me;
 }
 
 async function logout() {
@@ -37,6 +50,44 @@ function todayISO() {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 10);
+}
+
+// 食物類別對應的顏色（健康日誌與醫護端共用）
+const FOOD_GROUP_COLOR = { grains_starches: '#d4922a', vegetables: '#3c9a5f', protein: '#cf5e48' };
+
+// 在 canvas 上畫出照片與辨識框
+// src 可以是本機選取的照片網址，也可以是 /api/photos/<檔名>
+// size 是後端讀到的圖片尺寸（已依 EXIF 轉正）；沒有時以圖片本身的尺寸為準
+async function drawDetections(canvas, src, detections, size) {
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+  const scale = Math.min(1, 1200 / img.naturalWidth);
+  canvas.width = Math.round(img.naturalWidth * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const sx = canvas.width / (size ? size[0] : img.naturalWidth);
+  const sy = canvas.height / (size ? size[1] : img.naturalHeight);
+  // 線寬與字級以「螢幕上實際顯示的寬度」換算，手機上標籤才不會太小
+  const k = canvas.width / (canvas.parentElement.clientWidth || canvas.width);
+  const lw = Math.max(canvas.width / 240, 2.5 * k);
+  const fs = Math.round(Math.max(canvas.width / 38, 15 * k));
+  ctx.font = `bold ${fs}px system-ui, sans-serif`;
+  for (const d of detections) {
+    const color = FOOD_GROUP_COLOR[d.label] || '#3fbbc0';
+    const [x1, y1, x2, y2] = d.box;
+    const x = x1 * sx, y = y1 * sy, w = (x2 - x1) * sx, h = (y2 - y1) * sy;
+    ctx.lineWidth = lw; ctx.strokeStyle = color;
+    ctx.strokeRect(x, y, w, h);
+    const text = d.label_zh;
+    const tw = ctx.measureText(text).width + fs * 0.8, th = fs * 1.5;
+    const ty = y - th >= 0 ? y - th : y;
+    ctx.fillStyle = color;
+    ctx.fillRect(x - lw / 2, ty, tw, th);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(text, x - lw / 2 + fs * 0.4, ty + fs * 1.1);
+  }
 }
 
 // 確認視窗：以大字、大按鈕詢問使用者，回傳 Promise<boolean>
@@ -108,10 +159,12 @@ async function initAuthNav() {
   try { s = await apiFetch('/api/session'); } catch (_) { /* 後端未啟動時當作未登入 */ }
   const page = location.pathname.split('/').pop();
   if (s.logged_in && (page === 'login.html' || page === 'register.html')) {
-    window.location.replace('health.html');  // 已登入就不必再看到登入、註冊表單
+    window.location.replace(homeFor(s.role));  // 已登入就不必再看到登入、註冊表單
     return;
   }
   document.body.classList.toggle('logged-in', !!s.logged_in);
+  document.body.classList.toggle('role-staff', s.role === 'staff');
+  document.body.classList.toggle('role-patient', s.logged_in && s.role !== 'staff');
   document.body.classList.add('auth-ready');
   const btn = document.querySelector('.profile-btn');
   if (btn && s.logged_in) {

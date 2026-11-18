@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>病人紀錄｜智慧健康日誌</title>
+  <!-- Favicons -->
+  <link href="assets/img/favicon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="assets/css/main.css" rel="stylesheet">
+  <link href="assets/css/app.css" rel="stylesheet">
+
+  <!-- Include Chart.js -->
+
+</head>
+
+<body class="index-page app-body">
+
+  <header id="header" class="header sticky-top">
+
+    <div class="topbar d-flex align-items-center">
+      <div class="container d-flex justify-content-center justify-content-md-between">
+        <div class="d-none d-md-flex align-items-center">
+          <i class="bi bi-clock me-1"></i> 記得三餐準時紀錄健康日誌。
+        </div>
+        <div class="d-flex align-items-center">
+          <i class="bi bi-phone me-1"></i> 聯絡專線：089-322-833
+        </div>
+      </div>
+    </div><!-- End Top Bar -->
+
+    <div class="branding d-flex align-items-center">
+
+      <div class="container position-relative d-flex align-items-center justify-content-end">
+        <a href="index.html" class="logo d-flex align-items-center me-auto">
+          <img src="assets/img/logo.png" alt="">
+          <!-- Uncomment the line below if you also wish to use a text logo -->
+          <!-- <h1 class="sitename">Medicio</h1>  -->
+        </a>
+
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="index.html">機構簡介</a></li>
+            <li class="auth-user auth-patient"><a href="health.html">健康日誌</a></li>
+            <li class="auth-user auth-patient"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-staff"><a href="staff.html">病人管理</a></li>
+            <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><span class="handout-offline">認識糖尿病</span></li>
+                <li><span class="handout-offline">糖尿病病人之運動</span></li>
+                <li><span class="handout-offline">糖尿病患之足部照護</span></li>
+                <li><span class="handout-offline">糖尿病之自我監測血糖</span></li>
+                <li><span class="handout-offline">糖尿病之低血糖處理</span></li>
+                <li><span class="handout-note">單張由合作醫院提供，未隨程式碼公開</span></li>
+                </ul>
+            </li>
+            <li class="dropdown dropdown-end"><a><span>相關網站</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+              <ul>
+                <li><a href="https://www.hpa.gov.tw/Pages/List.aspx?nodeid=359">國民健康署</a></li>               
+                <li><a href="https://www.cdc.gov.tw">疾管署</a></li>
+                <li><a href="https://health99.hpa.gov.tw">健康九九</a></li>
+                <li><a href="https://www.careonline.com.tw/2019/05/diabetes.html">照護線上</a></li>
+                <li><a href="https://www.dmcare.org.tw">財團法人糖尿病關懷基金會</a></li>
+                <li><a href="https://www.tade.org.tw">社團法人中華民國糖尿病衛教學會</a></li>
+              </ul>
+            </li>
+            
+            
+            <li class="auth-guest"><a href="login.html">登入</a></li>
+            <li class="auth-user"><a href="#" onclick="logout(); return false;">登出</a></li>
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+
+        <a class="cta-btn profile-btn auth-user" href="about_me.html" title="個人資料" aria-label="個人資料"><i class="bi bi-person-circle"></i></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="app-container app-container-wide">
+      <a href="staff.html" class="back-link"><i class="bi bi-arrow-left"></i>返回病人清單</a>
+
+      <div class="page-head">
+        <div>
+          <h1 id="pName">病人紀錄</h1>
+          <p id="pSub">&nbsp;</p>
+        </div>
+        <div class="choice-group cols-3 range-picker" role="group" aria-label="查看範圍">
+          <div class="choice"><input type="radio" name="days" id="d7" value="7" checked><label for="d7">7 天</label></div>
+          <div class="choice"><input type="radio" name="days" id="d14" value="14"><label for="d14">14 天</label></div>
+          <div class="choice"><input type="radio" name="days" id="d30" value="30"><label for="d30">30 天</label></div>
+        </div>
+      </div>
+
+      <div id="loadMsg" class="form-msg" role="alert"></div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-person-walking"></i>運動達成</div>
+          <div class="stat-value" id="statExercise">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-basket"></i>三碗蔬菜</div>
+          <div class="stat-value" id="statVeggie">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-droplet-half"></i>平均血糖</div>
+          <div class="stat-value" id="statGlucose">—</div>
+          <div class="stat-foot">飯前 / 飯後（mg/dL）</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label"><i class="bi bi-egg-fried"></i>平均每日醣類</div>
+          <div class="stat-value" id="statCarbs">—</div>
+        </div>
+      </div>
+
+      <section class="app-card">
+        <div class="card-title-row">
+          <span class="card-icon"><i class="bi bi-calendar-check"></i></span>
+          <div><h2>每日達成情形</h2><p class="card-sub">✓ 達成　✕ 未達成　－ 沒有填寫</p></div>
+        </div>
+        <div class="strip-scroll"><div class="week-strip" id="weekStrip"></div></div>
+      </section>
+
+      <section class="app-card">
+        <div class="card-title-row">
+          <span class="card-icon"><i class="bi bi-activity"></i></span>
+          <div><h2>血糖變化</h2><p class="card-sub" id="refHint">每日平均（mg/dL）</p></div>
+        </div>
+        <div class="chart-box"><canvas id="lineChart"></canvas></div>
+      </section>
+
+      <section class="app-card">
+        <div class="card-title-row">
+          <span class="card-icon"><i class="bi bi-bar-chart"></i></span>
+          <div><h2>每日醣類攝取</h2><p class="card-sub">有拍照記錄的餐點（公克）</p></div>
+        </div>
+        <div class="chart-box"><canvas id="carbsChart"></canvas></div>
+      </section>
+
+      <section class="app-card">
+        <div class="card-title-row">
+          <span class="card-icon"><i class="bi bi-images"></i></span>
+          <div><h2>最近的餐點</h2><p class="card-sub">病人上傳的照片與系統辨識結果，份數由病人確認</p></div>
+        </div>
+        <div id="meals" class="empty-state">載入中…</div>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="assets/vendor/chartjs/chart.umd.min.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script>
+    const patientId = new URLSearchParams(location.search).get('id');
+    const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
+    const shortDate = iso => iso.slice(5).replace('-', '/');
+    const weekday = iso => WEEKDAY[new Date(iso + 'T00:00:00').getDay()];
+    const mean = xs => { const v = xs.filter(x => x !== null && x !== undefined); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+    const unit = u => `<small>${u}</small>`;
+    let charts = [];
+
+    function stats(d) {
+      const days = d.dates.length;
+      document.getElementById('statExercise').innerHTML = `${d.exercise.done}${unit(`/ ${days} 天`)}`;
+      document.getElementById('statVeggie').innerHTML = `${d.veggie.done}${unit(`/ ${days} 天`)}`;
+      const pre = mean(d.glucose_pre), post = mean(d.glucose_post);
+      const ref = d.reference;
+      const out = v => v !== null && (v > ref.pre_high || v < ref.pre_low);
+      const outPost = v => v !== null && v > ref.post_high;
+      document.getElementById('statGlucose').innerHTML = (pre === null && post === null) ? '—' :
+        `<span class="${out(pre) ? 'is-out' : ''}">${pre === null ? '—' : Math.round(pre)}</span>` +
+        `<small>/</small><span class="${outPost(post) ? 'is-out' : ''}">${post === null ? '—' : Math.round(post)}</span>`;
+      const carbs = mean(d.carbs_g);
+      document.getElementById('statCarbs').innerHTML = carbs === null ? '—' : `${Math.round(carbs)}${unit('公克')}`;
+      document.getElementById('refHint').textContent =
+        `每日平均（mg/dL）；參考範圍：飯前 ${ref.pre_low}–${ref.pre_high}、飯後 ${ref.post_high} 以下`;
+    }
+
+    function weekStrip(d) {
+      const cell = v => v === null || v === undefined ? '<div class="ws-cell" title="沒有填寫">－</div>'
+        : v ? '<div class="ws-cell done" title="達成"><i class="bi bi-check-lg"></i></div>'
+            : '<div class="ws-cell miss" title="未達成"><i class="bi bi-x-lg"></i></div>';
+      const strip = document.getElementById('weekStrip');
+      strip.style.gridTemplateColumns = `110px repeat(${d.dates.length}, minmax(44px, 1fr))`;
+      strip.innerHTML = '<div></div>' + d.dates.map(x => `<div class="ws-head">${shortDate(x)}<br>週${weekday(x)}</div>`).join('') +
+        '<div class="ws-label">運動</div>' + d.exercise_daily.map(cell).join('') +
+        '<div class="ws-label">蔬菜</div>' + d.veggie_daily.map(cell).join('');
+    }
+
+    const baseOptions = () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 14 }, boxWidth: 14 } } },
+      scales: { x: { offset: true, grid: { display: false }, ticks: { font: { size: 13 } } }, y: { ticks: { font: { size: 13 } } } }
+    });
+
+    function emptyChart(id, text) {
+      const box = document.getElementById(id).parentElement;
+      box.classList.add('is-empty');
+      box.innerHTML = `<div class="empty-state">${text}</div>`;
+    }
+
+    function lineChart(d) {
+      if (mean(d.glucose_pre) === null && mean(d.glucose_post) === null) {
+        emptyChart('lineChart', '這段期間沒有血糖紀錄。'); return;
+      }
+      charts.push(new Chart(document.getElementById('lineChart'), {
+        type: 'line',
+        data: {
+          labels: d.dates.map(shortDate),
+          datasets: [
+            { label: '飯前血糖', data: d.glucose_pre, borderColor: '#2a9a9f', backgroundColor: '#2a9a9f',
+              spanGaps: true, tension: 0.25, pointRadius: 4, borderWidth: 3 },
+            { label: '飯後血糖', data: d.glucose_post, borderColor: '#cf5e48', backgroundColor: '#cf5e48',
+              spanGaps: true, tension: 0.25, pointRadius: 4, borderWidth: 3 }
+          ]
+        },
+        options: baseOptions()
+      }));
+    }
+
+    function carbsChart(d) {
+      if (mean(d.carbs_g) === null) {
+        emptyChart('carbsChart', '這段期間沒有拍照記錄的餐點。'); return;
+      }
+      charts.push(new Chart(document.getElementById('carbsChart'), {
+        type: 'bar',
+        data: { labels: d.dates.map(shortDate),
+                datasets: [{ label: '醣類（公克）', data: d.carbs_g, backgroundColor: '#e2b25c', borderRadius: 6, maxBarThickness: 46 }] },
+        options: { ...baseOptions(), plugins: { legend: { display: false } },
+                   scales: { x: { offset: true, grid: { display: false }, ticks: { font: { size: 13 } } },
+                             y: { beginAtZero: true, ticks: { font: { size: 13 } } } } }
+      }));
+    }
+
+    function meals(rows) {
+      const box = document.getElementById('meals');
+      if (rows.length === 0) {
+        box.className = 'empty-state';
+        box.textContent = '這位病人還沒有上傳餐點照片。';
+        return;
+      }
+      const fmt = v => v === null || v === undefined ? '0' : `${Math.round(v * 10) / 10}`;
+      box.className = 'meal-grid';
+      box.innerHTML = rows.map(m => `
+        <article class="meal-card">
+          <div class="result-photo"><canvas data-photo="${escapeHtml(m.photo_filename)}" data-id="${m.id}"></canvas></div>
+          <div class="meal-head">
+            <strong>${escapeHtml(shortDate(m.log_date))} ${escapeHtml(m.meal_type || '餐點')}</strong>
+            <span>${m.carbs_g === null ? '—' : Math.round(m.carbs_g) + ' g 醣類'}</span>
+          </div>
+          <div class="meal-servings">
+            <span><i class="dot" style="background:${FOOD_GROUP_COLOR.grains_starches}"></i>全穀雜糧 ${fmt(m.grain_servings)} 份</span>
+            <span><i class="dot" style="background:${FOOD_GROUP_COLOR.vegetables}"></i>蔬菜 ${fmt(m.veg_servings)} 份</span>
+            <span><i class="dot" style="background:${FOOD_GROUP_COLOR.protein}"></i>豆魚蛋肉 ${fmt(m.protein_servings)} 份</span>
+          </div>
+          <p class="note">系統辨識 ${m.n_detected} 處 · 熱量約 ${m.total_kcal === null ? '—' : Math.round(m.total_kcal)} 大卡</p>
+        </article>`).join('');
+
+      // 逐張把照片與辨識框畫上去；照片讀取失敗時只留下份數資訊
+      for (const canvas of box.querySelectorAll('canvas')) {
+        const meal = rows.find(m => String(m.id) === canvas.dataset.id);
+        drawDetections(canvas, `/api/photos/${encodeURIComponent(canvas.dataset.photo)}`, meal.detections || [])
+          .catch(() => canvas.parentElement.remove());
+      }
+    }
+
+    async function load(days) {
+      const msg = document.getElementById('loadMsg');
+      msg.className = 'form-msg';
+      charts.forEach(c => c.destroy());
+      charts = [];
+      try {
+        const d = await apiFetch(`/api/staff/patients/${patientId}?days=${days}`);
+        document.getElementById('pName').textContent = d.patient.display_name || d.patient.username;
+        document.getElementById('pSub').textContent =
+          `帳號 ${d.patient.username} · 註冊於 ${d.patient.created_at.slice(0, 10)}`;
+        document.title = `${d.patient.display_name || d.patient.username}｜病人紀錄`;
+        stats(d);
+        weekStrip(d);
+        meals(d.recent_meals);
+        if (typeof Chart !== 'undefined') { lineChart(d); carbsChart(d); }
+      } catch (err) {
+        if (err.status === 401 || err.message === '角色不符') return;
+        msg.textContent = err.status === 404 ? '找不到這位病人，可能已被移除。' : `讀取資料失敗：${err.message}`;
+        msg.className = 'form-msg is-error';
+      }
+    }
+
+    requireLogin('staff').then(() => {
+      if (!patientId) {
+        const msg = document.getElementById('loadMsg');
+        msg.textContent = '沒有指定病人，請從病人清單進入。';
+        msg.className = 'form-msg is-error';
+        return;
+      }
+      load(7);
+      document.querySelectorAll('input[name=days]').forEach(r =>
+        r.addEventListener('change', () => load(parseInt(r.value, 10))));
+    }).catch(() => {});
+  </script>
+</body>
+
+</html>

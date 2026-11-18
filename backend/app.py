@@ -5,6 +5,8 @@
   新增健康日誌（含照片）  POST /api/logs
   確認／修改餐點份數      PUT  /api/logs/<id>/servings
   歷史統計               GET  /api/history?days=7
+  餐點照片               GET  /api/photos/<檔名>（本人或醫護人員才能取用）
+  醫護端                 GET  /api/staff/patients、/api/staff/patients/<id>
 並同時提供 frontend/ 的網頁。
 """
 import logging
@@ -36,6 +38,11 @@ CONFIG = {
 GROUP_COLUMNS = {"grains_starches": "grain_servings", "vegetables": "veg_servings", "protein": "protein_servings"}
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 MEAL_TYPES = {"早餐", "午餐", "晚餐"}
+# 血糖參考範圍（mg/dL）：僅用於在醫護端標示偏高或偏低，不是診斷依據。
+# 實際目標值因人而異，導入時應由醫療團隊確認後調整。
+GLUCOSE_REF = {"pre_low": 80, "pre_high": 130, "post_high": 180}
+# 超過這個天數沒有任何紀錄，就在病人清單標示出來
+INACTIVE_DAYS = 3
 
 log = logging.getLogger("shd")
 app = Flask(__name__, static_folder=None)
@@ -70,6 +77,9 @@ def init_db():
         for col in ("grain_servings", "veg_servings", "protein_servings", "carbs_g"):
             if col not in cols:
                 db.execute(f"ALTER TABLE health_logs ADD COLUMN {col} REAL")
+        # 舊版資料庫沒有角色欄位時補上，既有帳號一律視為病人
+        if "role" not in {r[1] for r in db.execute("PRAGMA table_info(users)")}:
+            db.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'patient'")
 
 
 # ---------- 模型（只載入一次） ----------
@@ -97,6 +107,27 @@ def login_required(view):
     def wrapped(*args, **kwargs):
         if "user_id" not in session:
             return error("請先登入", 401)
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def current_user():
+    uid = session.get("user_id")
+    if uid is None:
+        return None
+    return get_db().execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+
+
+def staff_required(view):
+    """醫護端專用：非醫護帳號一律擋下，避免病人看到其他人的資料。"""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user = current_user()
+        if user is None:
+            session.clear()
+            return error("請先登入", 401)
+        if user["role"] != "staff":
+            return error("這個頁面僅供醫護人員使用", 403)
         return view(*args, **kwargs)
     return wrapped
 
@@ -155,7 +186,7 @@ def login():
     session.clear()
     session["user_id"] = user["id"]
     return jsonify({"message": "登入成功", "username": user["username"],
-                    "display_name": user["display_name"]})
+                    "display_name": user["display_name"], "role": user["role"]})
 
 
 @app.post("/api/logout")
@@ -170,17 +201,18 @@ def session_status():
     uid = session.get("user_id")
     if uid is None:
         return jsonify({"logged_in": False})
-    user = get_db().execute("SELECT username, display_name FROM users WHERE id = ?", (uid,)).fetchone()
+    user = get_db().execute("SELECT username, display_name, role FROM users WHERE id = ?", (uid,)).fetchone()
     if user is None:
         session.clear()
         return jsonify({"logged_in": False})
-    return jsonify({"logged_in": True, "username": user["username"], "display_name": user["display_name"]})
+    return jsonify({"logged_in": True, "username": user["username"],
+                    "display_name": user["display_name"], "role": user["role"]})
 
 
 @app.get("/api/me")
 @login_required
 def me():
-    user = get_db().execute("SELECT username, display_name, created_at FROM users WHERE id = ?",
+    user = get_db().execute("SELECT username, display_name, role, created_at FROM users WHERE id = ?",
                             (session["user_id"],)).fetchone()
     if user is None:
         session.clear()
@@ -218,6 +250,8 @@ def delete_photos(filenames):
 @app.post("/api/logs")
 @login_required
 def create_log():
+    if current_user()["role"] == "staff":
+        return error("醫護帳號不記錄個人日誌", 403)
     form = request.form
     try:
         log_date = date.fromisoformat(form.get("date") or date.today().isoformat()).isoformat()
@@ -338,17 +372,14 @@ def update_servings(log_id):
     return jsonify({"message": "份量已更新", "servings": merged, "nutrition": totals})
 
 
-@app.get("/api/history")
-@login_required
-def history():
-    days = min(max(request.args.get("days", 7, type=int), 1), 90)
+def history_payload(db, user_id, days):
+    """整理某位使用者近 days 天的統計；病人看自己、醫護看病人都走這裡，確保兩邊數字一致。"""
     end = date.today()
     start = end - timedelta(days=days - 1)
-    db = get_db()
     rows = db.execute(
         """SELECT * FROM health_logs WHERE user_id = ? AND log_date BETWEEN ? AND ?
            ORDER BY log_date, created_at""",
-        (session["user_id"], start.isoformat(), end.isoformat())).fetchall()
+        (user_id, start.isoformat(), end.isoformat())).fetchall()
 
     # 逐日彙整：血糖取平均；運動 / 蔬菜當天只要有一筆「是」即算達成
     daily = {(start + timedelta(days=i)).isoformat(): {
@@ -373,15 +404,15 @@ def history():
         return {"done": sum(answered), "answered_days": len(answered)}
 
     recent = db.execute(
-        """SELECT l.id, l.log_date, l.meal_type, l.total_kcal, l.carbs_g,
+        """SELECT l.id, l.log_date, l.meal_type, l.total_kcal, l.carbs_g, l.photo_filename,
                   l.grain_servings, l.veg_servings, l.protein_servings,
                   COUNT(d.id) AS n_detected
            FROM health_logs l LEFT JOIN detections d ON d.log_id = l.id
            WHERE l.user_id = ? AND l.photo_filename IS NOT NULL
            GROUP BY l.id ORDER BY l.log_date DESC, l.created_at DESC LIMIT 10""",
-        (session["user_id"],)).fetchall()
+        (user_id,)).fetchall()
 
-    return jsonify({
+    return {
         "start": start.isoformat(), "end": end.isoformat(),
         "dates": list(daily.keys()),
         "glucose_pre": [avg(d["pre"]) for d in daily.values()],
@@ -392,7 +423,132 @@ def history():
         "exercise_daily": [d["exercise"] for d in daily.values()],
         "veggie_daily": [d["veggie"] for d in daily.values()],
         "recent_meals": [dict(r) for r in recent],
-    })
+    }
+
+
+@app.get("/api/history")
+@login_required
+def history():
+    days = min(max(request.args.get("days", 7, type=int), 1), 90)
+    return jsonify(history_payload(get_db(), session["user_id"], days))
+
+
+@app.get("/api/photos/<path:filename>")
+@login_required
+def photo(filename):
+    """餐點照片：只有上傳者本人或醫護人員能取用。"""
+    owner = get_db().execute(
+        "SELECT user_id FROM health_logs WHERE photo_filename = ?", (filename,)).fetchone()
+    if owner is None:
+        return error("找不到這張照片", 404)
+    user = current_user()
+    if user["role"] != "staff" and owner["user_id"] != user["id"]:
+        return error("無權查看這張照片", 403)
+    return send_from_directory(CONFIG["UPLOAD_DIR"], filename)
+
+
+# ---------- 醫護端 ----------
+def glucose_flags(pre, post):
+    """判斷平均血糖是否超出參考範圍，回傳給前端標色用。"""
+    flags = []
+    if pre is not None:
+        if pre > GLUCOSE_REF["pre_high"]:
+            flags.append("飯前偏高")
+        elif pre < GLUCOSE_REF["pre_low"]:
+            flags.append("飯前偏低")
+    if post is not None and post > GLUCOSE_REF["post_high"]:
+        flags.append("飯後偏高")
+    return flags
+
+
+@app.get("/api/staff/patients")
+@staff_required
+def staff_patients():
+    """病人清單：近 days 天的達成情形與平均血糖，供醫護掌握誰需要關心。"""
+    days = min(max(request.args.get("days", 7, type=int), 1), 90)
+    end = date.today()
+    start = end - timedelta(days=days - 1)
+    db = get_db()
+
+    # 先以「使用者 × 日期」彙整，再於 Python 併成每位病人的摘要，避免逐一查詢
+    per_day = db.execute(
+        """SELECT user_id, log_date,
+                  AVG(glucose_pre) AS pre, AVG(glucose_post) AS post,
+                  MAX(exercise_done) AS exercise, MAX(veggie_done) AS veggie,
+                  SUM(photo_filename IS NOT NULL) AS meals
+           FROM health_logs WHERE log_date BETWEEN ? AND ?
+           GROUP BY user_id, log_date""",
+        (start.isoformat(), end.isoformat())).fetchall()
+    stats = {}
+    for r in per_day:
+        d = stats.setdefault(r["user_id"], {"pre": [], "post": [], "exercise": [], "veggie": [], "meals": 0})
+        for key in ("pre", "post"):
+            if r[key] is not None:
+                d[key].append(r[key])
+        for key in ("exercise", "veggie"):
+            if r[key] is not None:
+                d[key].append(r[key])
+        d["meals"] += r["meals"] or 0
+
+    patients = db.execute(
+        """SELECT u.id, u.username, u.display_name, u.created_at,
+                  (SELECT MAX(log_date) FROM health_logs WHERE user_id = u.id) AS last_log_date,
+                  (SELECT COUNT(*) FROM health_logs WHERE user_id = u.id) AS total_logs
+           FROM users u WHERE u.role = 'patient' ORDER BY u.id""").fetchall()
+
+    def avg(xs):
+        return round(sum(xs) / len(xs), 1) if xs else None
+
+    out = []
+    for u in patients:
+        d = stats.get(u["id"], {"pre": [], "post": [], "exercise": [], "veggie": [], "meals": 0})
+        pre, post = avg(d["pre"]), avg(d["post"])
+        days_since = (end - date.fromisoformat(u["last_log_date"])).days if u["last_log_date"] else None
+        out.append({
+            "id": u["id"], "username": u["username"], "display_name": u["display_name"],
+            "created_at": u["created_at"], "last_log_date": u["last_log_date"],
+            "days_since_log": days_since, "total_logs": u["total_logs"],
+            "glucose_pre": pre, "glucose_post": post, "glucose_flags": glucose_flags(pre, post),
+            "exercise_done": sum(d["exercise"]), "exercise_days": len(d["exercise"]),
+            "veggie_done": sum(d["veggie"]), "veggie_days": len(d["veggie"]),
+            "meals": d["meals"],
+            "inactive": days_since is None or days_since >= INACTIVE_DAYS,
+        })
+    return jsonify({"days": days, "start": start.isoformat(), "end": end.isoformat(),
+                    "reference": GLUCOSE_REF, "inactive_days": INACTIVE_DAYS, "patients": out})
+
+
+@app.get("/api/staff/patients/<int:patient_id>")
+@staff_required
+def staff_patient_detail(patient_id):
+    """單一病人的詳細紀錄；統計與病人自己看到的完全相同（共用 history_payload）。"""
+    days = min(max(request.args.get("days", 14, type=int), 1), 90)
+    db = get_db()
+    user = db.execute("SELECT id, username, display_name, created_at, role FROM users WHERE id = ?",
+                      (patient_id,)).fetchone()
+    if user is None or user["role"] != "patient":
+        return error("找不到這位病人", 404)
+
+    data = history_payload(db, patient_id, days)
+    # 補上每一餐的辨識框，醫護才能看出份量是怎麼來的
+    meal_ids = [m["id"] for m in data["recent_meals"]]
+    boxes = {}
+    if meal_ids:
+        rows = db.execute(
+            f"""SELECT log_id, label, label_zh, confidence, x1, y1, x2, y2 FROM detections
+                WHERE log_id IN ({','.join('?' * len(meal_ids))})""", meal_ids).fetchall()
+        for r in rows:
+            boxes.setdefault(r["log_id"], []).append(
+                {"label": r["label"], "label_zh": r["label_zh"], "confidence": r["confidence"],
+                 "box": [r["x1"], r["y1"], r["x2"], r["y2"]]})
+    for m in data["recent_meals"]:
+        m["detections"] = boxes.get(m["id"], [])
+
+    last = data["recent_meals"][0]["log_date"] if data["recent_meals"] else None
+    return jsonify({
+        "patient": {"id": user["id"], "username": user["username"],
+                    "display_name": user["display_name"], "created_at": user["created_at"]},
+        "reference": GLUCOSE_REF, "last_meal_date": last, **data})
 
 
 # ---------- 網頁 ----------

@@ -1994,12 +1994,16 @@ section,
 # 依登入狀態顯示的導覽項目
 --------------------------------------------------------------*/
 body:not(.auth-ready) .auth-guest,
-body:not(.auth-ready) .auth-user {
+body:not(.auth-ready) .auth-user,
+body:not(.auth-ready) .auth-patient,
+body:not(.auth-ready) .auth-staff {
   visibility: hidden;
 }
 
 body:not(.logged-in) .auth-user,
-body.logged-in .auth-guest {
+body.logged-in .auth-guest,
+body:not(.role-patient) .auth-patient,
+body:not(.role-staff) .auth-staff {
   display: none !important;
 }
 

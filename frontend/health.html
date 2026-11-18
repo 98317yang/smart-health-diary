@@ -51,8 +51,9 @@
         <nav id="navmenu" class="navmenu">
           <ul>
             <li><a href="index.html">機構簡介</a></li>
-            <li class="auth-user"><a href="health.html">健康日誌</a></li>
-            <li class="auth-user"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-patient"><a href="health.html">健康日誌</a></li>
+            <li class="auth-user auth-patient"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-staff"><a href="staff.html">病人管理</a></li>
               <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
                 <ul>
                   <li><span class="handout-offline">認識糖尿病</span></li>
@@ -210,7 +211,7 @@
     const dropzone = document.getElementById('dropzone');
     const formMsg = document.getElementById('formMsg');
 
-    const GROUP_COLOR = { grains_starches: '#d4922a', vegetables: '#3c9a5f', protein: '#cf5e48' };
+    const GROUP_COLOR = FOOD_GROUP_COLOR;
     const fmtNum = v => (Math.round(v * 10) / 10).toString();
 
     dateInput.value = todayISO();
@@ -222,7 +223,7 @@
     }
     preselectMeal();
 
-    requireLogin().then(me => {
+    requireLogin('patient').then(me => {
       document.getElementById('greeting').textContent = `${me.display_name || me.username}，您好！今天也一起記錄吧。`;
       if (!me.detector_ready) {
         const n = document.getElementById('modelNotice');
@@ -250,40 +251,6 @@
     });
     ['dragenter', 'dragover'].forEach(t => dropzone.addEventListener(t, () => dropzone.classList.add('is-dragover')));
     ['dragleave', 'drop'].forEach(t => dropzone.addEventListener(t, () => dropzone.classList.remove('is-dragover')));
-
-    // ---------- 辨識結果：照片與框 ----------
-    async function drawDetections(canvas, file, detections, size) {
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      await img.decode();
-      const scale = Math.min(1, 1200 / img.naturalWidth);
-      canvas.width = Math.round(img.naturalWidth * scale);
-      canvas.height = Math.round(img.naturalHeight * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      // 框座標以後端讀到的圖片尺寸為準（已依 EXIF 轉正）
-      const sx = canvas.width / (size ? size[0] : img.naturalWidth);
-      const sy = canvas.height / (size ? size[1] : img.naturalHeight);
-      // 線寬與字級以「螢幕上實際顯示的寬度」換算，手機上標籤才不會太小
-      const k = canvas.width / (canvas.parentElement.clientWidth || canvas.width);
-      const lw = Math.max(canvas.width / 240, 2.5 * k);
-      const fs = Math.round(Math.max(canvas.width / 38, 15 * k));
-      ctx.font = `bold ${fs}px system-ui, sans-serif`;
-      for (const d of detections) {
-        const color = GROUP_COLOR[d.label] || '#3fbbc0';
-        const [x1, y1, x2, y2] = d.box;
-        const x = x1 * sx, y = y1 * sy, w = (x2 - x1) * sx, h = (y2 - y1) * sy;
-        ctx.lineWidth = lw; ctx.strokeStyle = color;
-        ctx.strokeRect(x, y, w, h);
-        const text = d.label_zh;
-        const tw = ctx.measureText(text).width + fs * 0.8, th = fs * 1.5;
-        const ty = y - th >= 0 ? y - th : y;
-        ctx.fillStyle = color;
-        ctx.fillRect(x - lw / 2, ty, tw, th);
-        ctx.fillStyle = '#fff';
-        ctx.fillText(text, x - lw / 2 + fs * 0.4, ty + fs * 1.1);
-      }
-    }
 
     // ---------- 份數調整 ----------
     let currentLogId = null;
@@ -371,7 +338,7 @@
       }
       if (data.nutrition && file) {
         try {
-          await drawDetections(document.getElementById('resultCanvas'), file, data.detections || [], data.image_size);
+          await drawDetections(document.getElementById('resultCanvas'), URL.createObjectURL(file), data.detections || [], data.image_size);
         } catch (_) {
           document.querySelector('.result-photo').remove();  // 瀏覽器無法讀取照片時，只顯示份數表
         }

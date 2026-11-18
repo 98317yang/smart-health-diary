@@ -57,8 +57,9 @@
         <nav id="navmenu" class="navmenu">
           <ul>
             <li><a href="index.html">機構簡介</a></li>
-            <li class="auth-user"><a href="health.html">健康日誌</a></li>
-            <li class="auth-user"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-patient"><a href="health.html">健康日誌</a></li>
+            <li class="auth-user auth-patient"><a href="history.html">歷史資料</a></li>
+            <li class="auth-user auth-staff"><a href="staff.html">病人管理</a></li>
             <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
               <ul>
                 <li><span class="handout-offline">認識糖尿病</span></li>
@@ -281,7 +282,7 @@
       }
     }
 
-    requireLogin()
+    requireLogin('patient')
       .then(() => apiFetch('/api/history?days=7'))
       .then(data => {
         stats(data);
@@ -292,7 +293,7 @@
         carbsChart(data);
       })
       .catch(err => {
-        if (err.status === 401) return;
+        if (err.status === 401 || err.message === '角色不符') return;
         document.getElementById('recentMeals').textContent = `讀取資料失敗：${err.message}`;
       });
   </script>
