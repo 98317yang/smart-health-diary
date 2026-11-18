@@ -2030,3 +2030,90 @@ body.logged-in .auth-guest {
     right: 0;
   }
 }
+
+/*--------------------------------------------------------------
+# 機構簡介：棒棒糖聯誼會、地圖
+--------------------------------------------------------------*/
+.fb-card h3 {
+  margin-top: 4px;
+}
+
+/* 卡片維持置中，清單本身靠左對齊 */
+.fb-list {
+  display: inline-block;
+  text-align: left;
+  margin: 0;
+  padding-left: 1.4em;
+  line-height: 1.9;
+}
+
+.fb-list.fb-checks {
+  list-style: none;
+  padding-left: 0;
+}
+
+.fb-list.fb-checks li::before {
+  content: "\F272";
+  font-family: "bootstrap-icons";
+  color: var(--accent-color);
+  margin-right: 8px;
+  vertical-align: -2px;
+}
+
+.fb-join {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+  margin-top: 32px;
+  padding: 28px 32px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-color), transparent 90%);
+  border: 1px solid color-mix(in srgb, var(--accent-color), transparent 70%);
+}
+
+.fb-join h3 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.fb-join p {
+  margin: 0;
+}
+
+.fb-join .fb-join-note {
+  margin-top: 6px;
+  font-size: 14px;
+  color: color-mix(in srgb, var(--default-color), transparent 30%);
+}
+
+.fb-join-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 10px;
+  background: var(--accent-color);
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fb-join-btn:hover {
+  color: #fff;
+  background: color-mix(in srgb, var(--accent-color), #000 12%);
+}
+
+.map-frame {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--default-color), transparent 88%);
+}
+
+.map-frame iframe {
+  display: block;
+  width: 100%;
+  height: 360px;
+}
