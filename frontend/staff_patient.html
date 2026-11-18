@@ -188,14 +188,14 @@
       const pre = mean(d.glucose_pre), post = mean(d.glucose_post);
       const ref = d.reference;
       const out = v => v !== null && (v > ref.pre_high || v < ref.pre_low);
-      const outPost = v => v !== null && v > ref.post_high;
+      const outPost = v => v !== null && (v > ref.post_high || v < ref.post_low);
       document.getElementById('statGlucose').innerHTML = (pre === null && post === null) ? '—' :
         `<span class="${out(pre) ? 'is-out' : ''}">${pre === null ? '—' : Math.round(pre)}</span>` +
         `<small>/</small><span class="${outPost(post) ? 'is-out' : ''}">${post === null ? '—' : Math.round(post)}</span>`;
       const carbs = mean(d.carbs_g);
       document.getElementById('statCarbs').innerHTML = carbs === null ? '—' : `${Math.round(carbs)}${unit('公克')}`;
       document.getElementById('refHint').textContent =
-        `每日平均（mg/dL）；參考範圍：飯前 ${ref.pre_low}–${ref.pre_high}、飯後 ${ref.post_high} 以下`;
+        `每日平均（mg/dL）；控制目標：飯前 ${ref.pre_low}–${ref.pre_high}、飯後 ${ref.post_low}–${ref.post_high}`;
     }
 
     function weekStrip(d) {

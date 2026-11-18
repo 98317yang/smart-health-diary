@@ -218,7 +218,7 @@
         const watch = d.patients.filter(p => p.inactive || p.glucose_flags.length).length;
         document.getElementById('statWatch').innerHTML = `${watch}<small>人</small>`;
         document.getElementById('watchHint').textContent =
-          `${d.inactive_days} 天以上沒記錄，或平均血糖超出 飯前 ${ref.pre_low}–${ref.pre_high}、飯後 ${ref.post_high} mg/dL`;
+          `${d.inactive_days} 天以上沒記錄，或平均血糖超出 飯前 ${ref.pre_low}–${ref.pre_high}、飯後 ${ref.post_low}–${ref.post_high} mg/dL`;
         render();
         document.getElementById('search').addEventListener('input', render);
         document.getElementById('onlyWatch').addEventListener('change', render);

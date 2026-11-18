@@ -39,8 +39,11 @@ GROUP_COLUMNS = {"grains_starches": "grain_servings", "vegetables": "veg_serving
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 MEAL_TYPES = {"早餐", "午餐", "晚餐"}
 # 血糖參考範圍（mg/dL）：僅用於在醫護端標示偏高或偏低，不是診斷依據。
-# 實際目標值因人而異，導入時應由醫療團隊確認後調整。
-GLUCOSE_REF = {"pre_low": 80, "pre_high": 130, "post_high": 180}
+# 採中華民國糖尿病學會《糖尿病臨床照護指引》成人糖尿病的控制目標
+# （餐前 80–130、餐後 1–2 小時 80–160），而非健康成人的診斷正常值。
+# 目標值需個別化：年齡、共病與低血糖風險都會影響，65 歲以上通常放寬，
+# 導入時應由醫療團隊逐項確認後調整。
+GLUCOSE_REF = {"pre_low": 80, "pre_high": 130, "post_low": 80, "post_high": 160}
 # 超過這個天數沒有任何紀錄，就在病人清單標示出來
 INACTIVE_DAYS = 3
 
@@ -456,8 +459,11 @@ def glucose_flags(pre, post):
             flags.append("飯前偏高")
         elif pre < GLUCOSE_REF["pre_low"]:
             flags.append("飯前偏低")
-    if post is not None and post > GLUCOSE_REF["post_high"]:
-        flags.append("飯後偏高")
+    if post is not None:
+        if post > GLUCOSE_REF["post_high"]:
+            flags.append("飯後偏高")
+        elif post < GLUCOSE_REF["post_low"]:
+            flags.append("飯後偏低")
     return flags
 
 
