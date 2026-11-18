@@ -123,10 +123,9 @@
 
         <nav id="navmenu" class="navmenu">
           <ul>
-            <li><a href="login.html" class="active">登入</a></li>
             <li><a href="index.html">機構簡介</a></li>
-            <li><a href="health.html">健康日誌</a></li>
-            <li><a href="history.html">歷史資料</a></li>
+            <li class="auth-user"><a href="health.html">健康日誌</a></li>
+            <li class="auth-user"><a href="history.html">歷史資料</a></li>
               <li class="dropdown"><a ><span>衛教園地</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
                 <ul>
                   <li><span class="handout-offline">認識糖尿病</span></li>
@@ -149,11 +148,13 @@
               </li>
               
               
+              <li class="auth-guest"><a href="login.html">登入</a></li>
+              <li class="auth-user"><a href="#" onclick="logout(); return false;">登出</a></li>
             </ul>
             <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
           </nav>
   
-          <a class="cta-btn" href="about_me.html">個人資料</a>
+          <a class="cta-btn profile-btn auth-user" href="about_me.html" title="個人資料" aria-label="個人資料"><i class="bi bi-person-circle"></i></a>
 
       </div>
 
@@ -194,6 +195,7 @@
 
   <!-- Main JS File -->
   <script src="assets/js/main.js"></script>
+  <script src="assets/js/api.js"></script>
 
 
   

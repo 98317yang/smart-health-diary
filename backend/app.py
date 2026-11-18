@@ -164,6 +164,19 @@ def logout():
     return jsonify({"message": "已登出"})
 
 
+@app.get("/api/session")
+def session_status():
+    """公開頁面用來判斷導覽列要顯示「登入」或「登出」；未登入也回 200，避免主控台出現錯誤。"""
+    uid = session.get("user_id")
+    if uid is None:
+        return jsonify({"logged_in": False})
+    user = get_db().execute("SELECT username, display_name FROM users WHERE id = ?", (uid,)).fetchone()
+    if user is None:
+        session.clear()
+        return jsonify({"logged_in": False})
+    return jsonify({"logged_in": True, "username": user["username"], "display_name": user["display_name"]})
+
+
 @app.get("/api/me")
 @login_required
 def me():

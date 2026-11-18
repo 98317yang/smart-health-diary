@@ -37,3 +37,36 @@ function todayISO() {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 10);
 }
+
+// 依登入狀態切換導覽列：未登入顯示「登入」，登入後顯示「登出」與個人資料圖示
+async function initAuthNav() {
+  let s = { logged_in: false };
+  try { s = await apiFetch('/api/session'); } catch (_) { /* 後端未啟動時當作未登入 */ }
+  const page = location.pathname.split('/').pop();
+  if (s.logged_in && (page === 'login.html' || page === 'register.html')) {
+    window.location.replace('health.html');  // 已登入就不必再看到登入、註冊表單
+    return;
+  }
+  document.body.classList.toggle('logged-in', !!s.logged_in);
+  document.body.classList.add('auth-ready');
+  const btn = document.querySelector('.profile-btn');
+  if (btn && s.logged_in) {
+    const label = `個人資料（${s.display_name || s.username}）`;
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+}
+
+// 依目前網址標示導覽列中的所在頁面
+function markActiveNav() {
+  const page = location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('#navmenu > ul > li > a[href$=".html"]').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === page);
+  });
+}
+
+(function () {
+  const run = () => { initAuthNav(); markActiveNav(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();

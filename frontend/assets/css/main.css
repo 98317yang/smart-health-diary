@@ -1989,3 +1989,36 @@ section,
   margin-top: 6px;
   white-space: normal;
 }
+
+/*--------------------------------------------------------------
+# 依登入狀態顯示的導覽項目
+--------------------------------------------------------------*/
+body:not(.auth-ready) .auth-guest,
+body:not(.auth-ready) .auth-user {
+  visibility: hidden;
+}
+
+body:not(.logged-in) .auth-user,
+body.logged-in .auth-guest {
+  display: none !important;
+}
+
+.header .cta-btn.profile-btn,
+.header .cta-btn.profile-btn:focus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+}
+
+@media (max-width: 1199px) {
+  .header .cta-btn.profile-btn {
+    order: 2;
+    margin: 0 10px 0 0;
+  }
+}
