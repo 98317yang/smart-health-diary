@@ -131,9 +131,9 @@
           <div class="field">
             <span class="field-label">生日</span>
             <div class="field-row cols-3">
-              <select class="form-select" id="birthYear" aria-label="出生年" required></select>
-              <select class="form-select" id="birthMonth" aria-label="出生月" required></select>
-              <select class="form-select" id="birthDay" aria-label="出生日" required></select>
+              <select class="form-select" id="birthYear" aria-label="出生年"></select>
+              <select class="form-select" id="birthMonth" aria-label="出生月"></select>
+              <select class="form-select" id="birthDay" aria-label="出生日"></select>
             </div>
             <div class="field-hint">用來推算年齡，醫護人員看紀錄時會參考</div>
           </div>
@@ -141,11 +141,11 @@
             <span class="field-label">性別</span>
             <div class="choice-group">
               <div class="choice">
-                <input type="radio" id="gender-f" name="gender" value="女" required>
+                <input type="radio" id="gender-f" name="gender" value="女">
                 <label for="gender-f">女</label>
               </div>
               <div class="choice">
-                <input type="radio" id="gender-m" name="gender" value="男" required>
+                <input type="radio" id="gender-m" name="gender" value="男">
                 <label for="gender-m">男</label>
               </div>
             </div>
@@ -207,15 +207,15 @@
       const btn = document.getElementById('registerBtn');
       msg.className = 'form-msg';
 
+      // 生日下拉與性別按鈕都自己檢查，一次把缺的項目列出來，
+      // 不用瀏覽器的必填驗證（性別的原生 radio 被隱藏，無法對焦，按了會沒反應）
       const birthday = birthdayValue();
       const gender = document.querySelector('input[name="gender"]:checked');
-      if (!birthday) {
-        msg.textContent = '請選擇完整的生日';
-        msg.className = 'form-msg is-error';
-        return;
-      }
-      if (!gender) {
-        msg.textContent = '請選擇性別';
+      const missing = [];
+      if (!birthday) missing.push('完整的生日');
+      if (!gender) missing.push('性別');
+      if (missing.length) {
+        msg.textContent = '請選擇：' + missing.join('、');
         msg.className = 'form-msg is-error';
         return;
       }

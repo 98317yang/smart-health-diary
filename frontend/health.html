@@ -384,6 +384,23 @@
       const meal = file ? fd.get('meal_type') : null;
       if (!file) fd.delete('meal_type');  // 沒有照片時不記錄餐別
       formMsg.className = 'form-msg';
+      formMsg.textContent = '';   // 清掉上一次的錯誤訊息，免得之後再顯示時是舊的
+
+      // 四個欄位都要填，缺一筆紀錄在醫護端就是看不懂的空格。
+      // 運動與蔬菜是整塊按鈕（原生 radio 被隱藏、無法對焦），
+      // 交給瀏覽器的必填驗證會變成按了沒反應，所以在這裡自己擋並且說清楚缺什麼。
+      const missing = [];
+      if (!fd.get('exercise')) missing.push('今天有沒有運動');
+      if (!String(fd.get('glucose_pre') || '').trim()) missing.push('飯前血糖');
+      if (!String(fd.get('glucose_post') || '').trim()) missing.push('飯後血糖');
+      if (!fd.get('veggie')) missing.push('有沒有吃滿三碗蔬菜');
+      if (missing.length) {
+        formMsg.textContent = '請填寫：' + missing.join('、');
+        formMsg.className = 'form-msg is-error';
+        formMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
       const busy = on => {
         btn.disabled = on;
         btn.innerHTML = on ? (file ? '照片分析中，請稍候…' : '儲存中…') : '<i class="bi bi-check2-circle"></i>儲存紀錄';

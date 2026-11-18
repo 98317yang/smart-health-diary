@@ -336,10 +336,15 @@ def create_log():
         photo_filename = f"{uuid.uuid4().hex}{ext}"
         (CONFIG["UPLOAD_DIR"] / photo_filename).write_bytes(image_bytes)
 
-    fields = [glucose_pre, glucose_post, parse_bool(form.get("exercise")),
-              parse_bool(form.get("veggie")), photo_filename]
-    if all(v is None for v in fields):
-        return error("請至少填寫一項資料或上傳一張照片")
+    exercise = parse_bool(form.get("exercise"))
+    veggie = parse_bool(form.get("veggie"))
+    # 一筆日誌要嘛完整，要嘛不存。缺一欄位的紀錄在醫護端只會變成無法判讀的空格，
+    # 也會讓達成率的分母失真，所以四個欄位一律必填。
+    missing = [name for name, v in (("運動", exercise), ("飯前血糖", glucose_pre),
+                                    ("飯後血糖", glucose_post), ("三碗蔬菜", veggie)) if v is None]
+    if missing:
+        return error("請填寫：" + "、".join(missing))
+    fields = [glucose_pre, glucose_post, exercise, veggie, photo_filename]
 
     servings = servings_dict(groups)
     totals = nutrition(servings) if photo_filename else None
@@ -350,8 +355,8 @@ def create_log():
                                     glucose_post, veggie_done, photo_filename, total_kcal,
                                     grain_servings, veg_servings, protein_servings, carbs_g)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (session["user_id"], log_date, meal_type, fields[2], glucose_pre, glucose_post,
-         fields[3], photo_filename, totals and totals["kcal"],
+        (session["user_id"], log_date, meal_type, exercise, glucose_pre, glucose_post,
+         veggie, photo_filename, totals and totals["kcal"],
          *[servings.get(g) for g in GROUP_COLUMNS], totals and totals["carbs_g"]))
     db.executemany(
         "INSERT INTO detections (log_id, label, label_zh, confidence, x1, y1, x2, y2) "

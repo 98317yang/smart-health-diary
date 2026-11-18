@@ -40,11 +40,13 @@ DEMO_PATIENTS = [
     dict(username="demo_wang", name="王美玉", birthday="1961-11-02", gender="女",
          pre=(148, 14), post=(207, 25), exercise=0.2, veggie=0.3, days_back=1, meals_per_day=2),
     dict(username="demo_chang", name="張國棟", birthday="1954-01-18", gender="男",
-         pre=(126, 13), post=(152, 18), exercise=0.5, veggie=0.5, days_back=5, meals_per_day=1),
+         pre=(126, 13), post=(152, 18), exercise=0.5, veggie=0.5, days_back=4, meals_per_day=2),
     dict(username="demo_huang", name="黃麗華", birthday="1971-04-14", gender="女",
          pre=(74, 7), post=(132, 16), exercise=0.6, veggie=0.6, days_back=0, meals_per_day=2),
 ]
-DAYS = 14  # 產生最近兩週的紀錄
+DAYS = 14        # 產生最近兩週的紀錄
+MIN_DAYS = 3     # 每位病人至少要有這麼多天的紀錄落在醫護端的七天檢視範圍內
+SKIP_CHANCE = 0.15  # 其餘日子偶爾漏記，比每天都滿分真實
 
 
 def connect():
@@ -91,9 +93,76 @@ def servings_from(dets):
     return counts
 
 
+def backfill(db, username, rng):
+    """補齊既有紀錄缺的欄位。
+
+    開發過程留下的紀錄常常只有照片、沒有填血糖與運動，在醫護端會變成一片空格。
+    這裡依該帳號既有紀錄的血糖分布補值，讓示範資料前後一致；
+    沒有既有數值可參考時，用控制良好的範圍。
+    """
+    u = db.execute("SELECT id, display_name FROM users WHERE username = ?", (username,)).fetchone()
+    if u is None:
+        print(f"找不到帳號 {username}，略過")
+        return
+    rows = db.execute(
+        """SELECT id, log_date, exercise_done, glucose_pre, glucose_post, veggie_done
+           FROM health_logs WHERE user_id = ? ORDER BY log_date, id""", (u["id"],)).fetchall()
+
+    def spread(col, fallback):
+        xs = [r[col] for r in rows if r[col] is not None]
+        if len(xs) < 3:
+            return fallback
+        mean = sum(xs) / len(xs)
+        var = sum((x - mean) ** 2 for x in xs) / len(xs)
+        return (mean, max(var ** 0.5, 6))
+
+    pre_spec = spread("glucose_pre", (108, 11))
+    post_spec = spread("glucose_post", (142, 16))
+
+    def rate(col, fallback):
+        xs = [r[col] for r in rows if r[col] is not None]
+        return sum(xs) / len(xs) if len(xs) >= 3 else fallback
+
+    ex_rate = rate("exercise_done", 0.7)
+    veg_rate = rate("veggie_done", 0.7)
+
+    # 同一天的運動與蔬菜要一致，不然同一天的兩餐會互相矛盾
+    per_day = {}
+    filled = 0
+    for r in rows:
+        day = per_day.setdefault(r["log_date"], {})
+        if r["exercise_done"] is not None:
+            day["exercise"] = r["exercise_done"]
+        if r["veggie_done"] is not None:
+            day["veggie"] = r["veggie_done"]
+
+    for r in rows:
+        updates = {}
+        day = per_day[r["log_date"]]
+        if r["exercise_done"] is None:
+            day.setdefault("exercise", 1 if rng.random() < ex_rate else 0)
+            updates["exercise_done"] = day["exercise"]
+        if r["veggie_done"] is None:
+            day.setdefault("veggie", 1 if rng.random() < veg_rate else 0)
+            updates["veggie_done"] = day["veggie"]
+        if r["glucose_pre"] is None:
+            updates["glucose_pre"] = round(min(600, max(20, rng.gauss(*pre_spec))))
+        if r["glucose_post"] is None:
+            updates["glucose_post"] = round(min(600, max(20, rng.gauss(*post_spec))))
+        if updates:
+            sets = ", ".join(f"{k} = ?" for k in updates)
+            db.execute(f"UPDATE health_logs SET {sets} WHERE id = ?", (*updates.values(), r["id"]))
+            filled += 1
+    db.commit()
+    print(f"{u['display_name'] or username}：補齊 {filled} 筆紀錄"
+          f"（飯前約 {pre_spec[0]:.0f}、飯後約 {post_spec[0]:.0f}）")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--reset", action="store_true", help="先清掉舊的示範資料")
+    ap.add_argument("--backfill", metavar="帳號", action="append", default=[],
+                    help="補齊這個帳號既有紀錄中缺的運動／血糖／蔬菜（可重複指定）")
     ap.add_argument("--seed", type=int, default=20261118, help="隨機種子，固定才能重現同一批資料")
     args = ap.parse_args()
 
@@ -106,6 +175,8 @@ def main():
     ensure_columns(db)
     if args.reset:
         reset(db)
+    for username in args.backfill:
+        backfill(db, username, rng)
 
     # Yang 本人的基本資料（使用者指定：45 歲、女）
     db.execute("UPDATE users SET birthday = ?, gender = ? WHERE username = 'test'",
@@ -130,12 +201,16 @@ def main():
             print(f"建立 {spec['name']}（{spec['username']}）：尚未開始記錄")
             continue
 
+        # 從最後一次記錄往前推；前 MIN_DAYS 天一定要有紀錄，
+        # 否則隨機漏記可能讓醫護端的七天檢視只剩一兩天，統計看起來會很奇怪
+        first = spec["days_back"]
+        guaranteed = set(range(first, first + MIN_DAYS))
+        record_days = [b for b in range(first, DAYS)
+                       if b in guaranteed or rng.random() >= SKIP_CHANCE]
+
         n_logs = n_photos = 0
-        for back in range(spec["days_back"], DAYS):
+        for back in record_days:
             day = today - timedelta(days=back)
-            # 偶爾漏記一天，比每天都滿分真實
-            if rng.random() < 0.15:
-                continue
             exercise = 1 if rng.random() < spec["exercise"] else 0
             veggie = 1 if rng.random() < spec["veggie"] else 0
             for meal in rng.sample(MEALS, min(spec["meals_per_day"], len(MEALS))):
