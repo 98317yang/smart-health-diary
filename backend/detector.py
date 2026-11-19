@@ -19,7 +19,9 @@ from utils.augmentations import letterbox  # noqa: E402
 from utils.general import check_img_size, non_max_suppression, scale_boxes  # noqa: E402
 from utils.torch_utils import select_device  # noqa: E402
 
-from nutrition import load_food_info  # noqa: E402
+from nutrition import count_dishes, load_food_info  # noqa: E402
+
+MAX_PIXELS = 120_000_000  # 1.2 億像素：涵蓋一般手機相機（含 1 億 800 萬畫素機種）
 
 
 class FoodDetector:
@@ -42,7 +44,14 @@ class FoodDetector:
         轉正後的座標系與瀏覽器顯示照片時一致，前端才能把框畫在正確位置。
         """
         try:
-            pil = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
+            raw = Image.open(io.BytesIO(image_bytes))
+            # 先看尺寸再解碼：超過 MAX_PIXELS 的不解碼，避免吃光記憶體
+            if raw.width * raw.height > MAX_PIXELS:
+                raise Image.DecompressionBombError("too many pixels")
+            pil = ImageOps.exif_transpose(raw).convert("RGB")
+        except Image.DecompressionBombError:
+            # 像素數極大的圖片（Pillow 視為解壓縮炸彈）會吃光記憶體，直接拒絕
+            raise ValueError("照片解析度太高，請改用一般手機拍攝的照片")
         except (UnidentifiedImageError, OSError):
             raise ValueError("無法讀取圖片，請確認檔案格式")
         return cv2.cvtColor(np.asarray(pil), cv2.COLOR_RGB2BGR)
@@ -82,8 +91,10 @@ class FoodDetector:
     def summarize(self, detections):
         """把偵測結果依食物類別彙整，附上預設份量與可選份量（份量需由使用者確認）。"""
         groups = []
+        # 同一處食物被大框套小框時只算一次（見 nutrition.count_dishes）
+        counts = count_dishes((d["label"], d["box"]) for d in detections)
         for key, info in self.food_info.items():
-            count = sum(1 for d in detections if d["label"] == key)
+            count = counts.get(key, 0)
             if count == 0:
                 continue
             groups.append({

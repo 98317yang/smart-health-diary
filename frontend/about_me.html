@@ -135,10 +135,11 @@
   <script src="assets/js/main.js"></script>
   <script src="assets/js/api.js"></script>
   <script>
-    // 資料庫存的是 UTC 時間，轉成使用者當地日期
+    // 資料庫以伺服器當地時間存註冊時間（datetime('now', 'localtime')），直接取日期部分即可；
+    // 不能當成 UTC 再換算，否則晚上註冊的人會顯示成隔天，也會跟醫護端顯示的日期不同
     function localDate(ts) {
-      const d = new Date(String(ts).replace(' ', 'T') + 'Z');
-      return isNaN(d) ? ts : d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ts || ''));
+      return m ? `${Number(m[1])} 年 ${Number(m[2])} 月 ${Number(m[3])} 日` : (ts || '—');
     }
 
     requireLogin().then(me => {

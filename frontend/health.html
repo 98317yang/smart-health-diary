@@ -98,6 +98,7 @@
         <div style="min-width: 210px;">
           <label for="date" class="field-label">紀錄日期</label>
           <input type="date" class="form-control" id="date" name="date">
+          <div class="field-hint" id="dateHint">&nbsp;</div>
         </div>
       </div>
 
@@ -126,7 +127,7 @@
             <span class="card-icon"><i class="bi bi-droplet-half"></i></span>
             <div>
               <h2>血糖測量</h2>
-              <p class="card-sub">有量再填，沒量可以空著</p>
+              <p class="card-sub">飯前、飯後都要填，請填血糖機上的數字</p>
             </div>
           </div>
           <div class="row g-3">
@@ -214,7 +215,17 @@
     const GROUP_COLOR = FOOD_GROUP_COLOR;
     const fmtNum = v => (Math.round(v * 10) / 10).toString();
 
+    // 只能記錄今天或最近 30 天內（與後端 LOG_BACKDATE_DAYS 一致），不能選未來
+    const BACKDATE_DAYS = 30;
+    function isoDaysAgo(n) {
+      const d = new Date(todayISO() + 'T00:00:00');
+      d.setDate(d.getDate() - n);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
     dateInput.value = todayISO();
+    dateInput.max = todayISO();
+    dateInput.min = isoDaysAgo(BACKDATE_DAYS - 1);
+    document.getElementById('dateHint').textContent = `可補記最近 ${BACKDATE_DAYS} 天內的紀錄`;
 
     // 依目前時間預先選好餐別，使用者仍可改
     function preselectMeal() {
@@ -324,7 +335,7 @@
             <p class="note">※ 份量由您確認，系統估算僅為參考。換算依據為國民健康署食物代換表。</p>`;
         }
       } else {
-        html += '<p>已儲存今天的血糖與運動紀錄。</p>';
+        html += '<p>已儲存血糖、運動與蔬菜的紀錄。</p>';
       }
 
       resultBox.innerHTML = html;
@@ -389,6 +400,16 @@
       // 四個欄位都要填，缺一筆紀錄在醫護端就是看不懂的空格。
       // 運動與蔬菜是整塊按鈕（原生 radio 被隱藏、無法對焦），
       // 交給瀏覽器的必填驗證會變成按了沒反應，所以在這裡自己擋並且說清楚缺什麼。
+      const day = dateInput.value;
+      if (!day || day > dateInput.max || day < dateInput.min) {
+        formMsg.textContent = day > dateInput.max
+          ? '不能記錄未來的日期，請重新選擇紀錄日期。'
+          : `紀錄日期需在最近 ${BACKDATE_DAYS} 天內，請重新選擇。`;
+        formMsg.className = 'form-msg is-error';
+        dateInput.focus();
+        return;
+      }
+
       const missing = [];
       if (!fd.get('exercise')) missing.push('今天有沒有運動');
       if (!String(fd.get('glucose_pre') || '').trim()) missing.push('飯前血糖');

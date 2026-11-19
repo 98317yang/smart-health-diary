@@ -100,16 +100,25 @@
           <h1>我的歷史資料</h1>
           <p id="rangeText">最近 7 天</p>
         </div>
+        <div class="choice-group cols-3 range-picker" role="group" aria-label="查看範圍">
+          <div class="choice"><input type="radio" name="days" id="d7" value="7" checked><label for="d7">7 天</label></div>
+          <div class="choice"><input type="radio" name="days" id="d14" value="14"><label for="d14">14 天</label></div>
+          <div class="choice"><input type="radio" name="days" id="d30" value="30"><label for="d30">30 天</label></div>
+        </div>
       </div>
+
+      <div id="loadMsg" class="form-msg" role="alert"></div>
 
       <div class="stat-grid">
         <div class="stat-card">
           <div class="stat-label"><i class="bi bi-person-walking"></i>運動達成</div>
           <div class="stat-value" id="statExercise">—</div>
+          <div class="stat-foot" id="footExercise">&nbsp;</div>
         </div>
         <div class="stat-card">
           <div class="stat-label"><i class="bi bi-basket"></i>三碗蔬菜</div>
           <div class="stat-value" id="statVeggie">—</div>
+          <div class="stat-foot" id="footVeggie">&nbsp;</div>
         </div>
         <div class="stat-card">
           <div class="stat-label"><i class="bi bi-droplet-half"></i>平均血糖</div>
@@ -119,6 +128,7 @@
         <div class="stat-card">
           <div class="stat-label"><i class="bi bi-egg-fried"></i>平均每日醣類</div>
           <div class="stat-value" id="statCarbs">—</div>
+          <div class="stat-foot" id="footCarbs">&nbsp;</div>
         </div>
       </div>
 
@@ -127,7 +137,7 @@
           <span class="card-icon"><i class="bi bi-calendar-check"></i></span>
           <div><h2>每日達成情形</h2><p class="card-sub">✓ 達成　✕ 未達成　－ 沒有填寫</p></div>
         </div>
-        <div class="week-strip" id="weekStrip"></div>
+        <div class="strip-scroll"><div class="week-strip" id="weekStrip"></div></div>
       </section>
 
       <section class="app-card">
@@ -135,7 +145,7 @@
           <span class="card-icon"><i class="bi bi-activity"></i></span>
           <div><h2>血糖變化</h2><p class="card-sub">每日平均（mg/dL）</p></div>
         </div>
-        <div class="chart-box"><canvas id="lineChart"></canvas></div>
+        <div class="chart-box" id="lineBox"></div>
       </section>
 
       <section class="app-card">
@@ -143,15 +153,15 @@
           <span class="card-icon"><i class="bi bi-bar-chart"></i></span>
           <div><h2>每日醣類攝取</h2><p class="card-sub">有拍照記錄的餐點（公克）</p></div>
         </div>
-        <div class="chart-box"><canvas id="carbsChart"></canvas></div>
+        <div class="chart-box" id="carbsBox"></div>
       </section>
 
       <section class="app-card">
         <div class="card-title-row">
           <span class="card-icon"><i class="bi bi-list-ul"></i></span>
-          <div><h2>最近的餐點紀錄</h2></div>
+          <div><h2>這段期間的紀錄</h2><p class="card-sub">數字打錯可以按「修改」，整筆不要了可以刪除</p></div>
         </div>
-        <div id="recentMeals" class="empty-state">載入中…</div>
+        <div id="records" class="empty-state">載入中…</div>
       </section>
     </div>
   </main>
@@ -161,141 +171,194 @@
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
   <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
   <script src="assets/vendor/chartjs/chart.umd.min.js"></script>
+  <script src="assets/js/history-view.js"></script>
   <script src="assets/js/main.js"></script>
   <script src="assets/js/api.js"></script>
   <script>
-    const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
-    const shortDate = iso => iso.slice(5).replace('-', '/');
-    const weekday = iso => WEEKDAY[new Date(iso + 'T00:00:00').getDay()];
-    const mean = xs => { const v = xs.filter(x => x !== null && x !== undefined); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
-    const unit = u => `<small>${u}</small>`;
+    const { shortDate, weekday } = HistoryView;
+    let currentDays = 7;
+    let records = [];
 
-    function stats(data) {
-      const days = data.dates.length;
-      document.getElementById('rangeText').textContent = `最近 ${days} 天（${shortDate(data.start)}–${shortDate(data.end)}）`;
-      document.getElementById('statExercise').innerHTML = `${data.exercise.done}${unit(`/ ${days} 天`)}`;
-      document.getElementById('statVeggie').innerHTML = `${data.veggie.done}${unit(`/ ${days} 天`)}`;
-      const pre = mean(data.glucose_pre), post = mean(data.glucose_post);
-      document.getElementById('statGlucose').innerHTML = (pre === null && post === null) ? '—' :
-        `${pre === null ? '—' : Math.round(pre)}<small>/</small> ${post === null ? '—' : Math.round(post)}`;
-      const carbs = mean(data.carbs_g);
-      document.getElementById('statCarbs').innerHTML = carbs === null ? '—' : `${Math.round(carbs)}${unit('公克')}`;
-    }
+    const yesNo = v => v === null || v === undefined ? '—' : v ? '有' : '沒有';
+    const num = v => v === null || v === undefined ? '—' : Math.round(v);
 
-    function weekStrip(data) {
-      const cell = v => v === null || v === undefined ? '<div class="ws-cell" title="沒有填寫">－</div>'
-        : v ? '<div class="ws-cell done" title="達成"><i class="bi bi-check-lg"></i></div>'
-            : '<div class="ws-cell miss" title="未達成"><i class="bi bi-x-lg"></i></div>';
-      let html = '<div></div>' + data.dates.map(d => `<div class="ws-head">${shortDate(d)}<br>週${weekday(d)}</div>`).join('');
-      html += '<div class="ws-label">運動</div>' + data.exercise_daily.map(cell).join('');
-      html += '<div class="ws-label">蔬菜</div>' + data.veggie_daily.map(cell).join('');
-      document.getElementById('weekStrip').innerHTML = html;
-    }
-
-    function emptyChart(canvasId, text) {
-      document.getElementById(canvasId).parentElement.outerHTML = `<div class="empty-state">${text}</div>`;
-    }
-
-    // 每張圖各自產生一份設定：Chart.js 會改寫傳入的設定物件，共用同一份會互相影響
-    const baseOptions = () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { font: { size: 14 }, boxWidth: 14 } } },
-      scales: { x: { offset: true, grid: { display: false }, ticks: { font: { size: 13 } } }, y: { ticks: { font: { size: 13 } } } }
-    });
-
-    function lineChart(data) {
-      if (mean(data.glucose_pre) === null && mean(data.glucose_post) === null) {
-        emptyChart('lineChart', '這 7 天還沒有血糖紀錄。'); return;
+    // 每一筆紀錄一列：上面是日期與餐別，下面是這次填的數字；手機與電腦都用同一種排法
+    function renderRecords(rows) {
+      const box = document.getElementById('records');
+      records = rows;
+      if (rows.length === 0) {
+        box.className = 'empty-state';
+        box.textContent = '這段期間還沒有紀錄。';
+        return;
       }
-      new Chart(document.getElementById('lineChart'), {
-        type: 'line',
-        data: {
-          labels: data.dates.map(shortDate),
-          datasets: [
-            { label: '飯前血糖', data: data.glucose_pre, borderColor: '#2a9a9f', backgroundColor: '#2a9a9f',
-              spanGaps: true, tension: 0.25, pointRadius: 5, borderWidth: 3 },
-            { label: '飯後血糖', data: data.glucose_post, borderColor: '#cf5e48', backgroundColor: '#cf5e48',
-              spanGaps: true, tension: 0.25, pointRadius: 5, borderWidth: 3 }
-          ]
-        },
-        options: baseOptions()
-      });
+      box.className = 'record-list';
+      box.innerHTML = rows.map(r => {
+        const when = `${shortDate(r.log_date)}（週${weekday(r.log_date)}）`;
+        const meal = r.photo_filename
+          ? `${escapeHtml(r.meal_type || '餐點')}<span class="rec-tag"><i class="bi bi-camera"></i>有照片</span>`
+          : '<span class="rec-muted">沒有餐點照片</span>';
+        const carbs = r.photo_filename && r.carbs_g !== null ? `<span>醣類 <b>${Math.round(r.carbs_g)}</b> g</span>` : '';
+        return `
+          <article class="record-item">
+            <div class="rec-main">
+              <div class="rec-title"><strong>${escapeHtml(when)}</strong> ${meal}</div>
+              <div class="rec-values">
+                <span>飯前 <b>${num(r.glucose_pre)}</b></span>
+                <span>飯後 <b>${num(r.glucose_post)}</b></span>
+                <span>運動 <b>${yesNo(r.exercise_done)}</b></span>
+                <span>三碗蔬菜 <b>${yesNo(r.veggie_done)}</b></span>
+                ${carbs}
+              </div>
+            </div>
+            <div class="rec-actions">
+              <button type="button" class="btn-app btn-ghost btn-sm" data-edit="${r.id}">
+                <i class="bi bi-pencil"></i>修改</button>
+              <button type="button" class="icon-btn" data-del="${r.id}"
+                aria-label="刪除 ${escapeHtml(when)} 的紀錄" title="刪除這筆紀錄"><i class="bi bi-trash3"></i></button>
+            </div>
+          </article>`;
+      }).join('');
+      box.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => editRecord(+b.dataset.edit)));
+      box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => deleteRecord(+b.dataset.del)));
     }
 
-    function carbsChart(data) {
-      if (mean(data.carbs_g) === null) {
-        emptyChart('carbsChart', '這 7 天還沒有拍照記錄的餐點。'); return;
-      }
-      new Chart(document.getElementById('carbsChart'), {
-        type: 'bar',
-        data: {
-          labels: data.dates.map(shortDate),
-          datasets: [{ label: '醣類（公克）', data: data.carbs_g, backgroundColor: '#e2b25c', borderRadius: 6, maxBarThickness: 46 }]
-        },
-        options: {
-          ...baseOptions(),
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { offset: true, grid: { display: false }, ticks: { font: { size: 13 } } },
-            y: { beginAtZero: true, ticks: { font: { size: 13 } } }
-          }
-        }
-      });
+    function describe(r) {
+      return `${shortDate(r.log_date)}${r.meal_type ? ' ' + r.meal_type : ''}`;
     }
 
-    function recentMeals(rows) {
-      const box = document.getElementById('recentMeals');
-      if (rows.length === 0) { box.textContent = '最近還沒有上傳餐點照片。'; return; }
-      box.className = '';
-      const fmt = v => v === null || v === undefined ? '—' : `${Math.round(v * 10) / 10}`;
-      box.innerHTML = '<table class="meal-table"><thead><tr><th>日期</th><th>餐別</th>' +
-        '<th class="num hide-sm">全穀雜糧</th><th class="num hide-sm">蔬菜</th><th class="num hide-sm">豆魚蛋肉</th>' +
-        '<th class="num">醣類</th><th class="num">熱量</th><th><span class="visually-hidden">刪除</span></th></tr></thead><tbody>' +
-        rows.map(r => `<tr><td>${escapeHtml(shortDate(r.log_date))}</td><td>${escapeHtml(r.meal_type || '—')}</td>` +
-          `<td class="num hide-sm">${fmt(r.grain_servings)} 份</td><td class="num hide-sm">${fmt(r.veg_servings)} 份</td>` +
-          `<td class="num hide-sm">${fmt(r.protein_servings)} 份</td>` +
-          `<td class="num">${r.carbs_g === null ? '—' : Math.round(r.carbs_g) + ' g'}</td>` +
-          `<td class="num">${r.total_kcal === null ? '—' : Math.round(r.total_kcal) + ' 大卡'}</td>` +
-          `<td class="act"><button type="button" class="icon-btn" data-id="${r.id}" data-label="${escapeHtml(shortDate(r.log_date) + ' ' + (r.meal_type || '餐點'))}" ` +
-          `aria-label="刪除 ${escapeHtml(shortDate(r.log_date) + ' ' + (r.meal_type || '餐點'))} 的紀錄" title="刪除這筆紀錄"><i class="bi bi-trash3"></i></button></td></tr>`).join('') +
-        '</tbody></table>' +
-        '<p class="note">份數由使用者確認；醣類與熱量依國民健康署食物代換表換算。</p>';
-      box.querySelectorAll('.icon-btn').forEach(btn => btn.addEventListener('click', () => deleteMeal(btn)));
-    }
-
-    async function deleteMeal(btn) {
+    async function deleteRecord(id) {
+      const r = records.find(x => x.id === id);
       const ok = await confirmDialog({
-        title: '刪除這筆餐點紀錄？',
-        message: `${btn.dataset.label}的照片與份量會被刪除，刪除後無法復原。同一次填寫的血糖與運動紀錄會保留。`,
+        title: '刪除這筆紀錄？',
+        message: `${describe(r)} 這一次填寫的血糖、運動、蔬菜${r.photo_filename ? '與餐點照片' : ''}都會刪除，刪除後無法復原。`,
         okText: '刪除',
         cancelText: '取消',
         danger: true
       });
       if (!ok) return;
       try {
-        await apiFetch(`/api/logs/${btn.dataset.id}`, { method: 'DELETE' });
-        location.reload();  // 重新整理，讓統計與圖表一起更新
+        await apiFetch(`/api/logs/${id}`, { method: 'DELETE' });
+        await load(currentDays);
       } catch (err) {
-        const box = document.getElementById('recentMeals');
-        box.insertAdjacentHTML('afterbegin', `<div class="form-msg is-error">${escapeHtml(err.message)}</div>`);
+        showMsg(err.message);
       }
     }
 
-    requireLogin('patient')
-      .then(() => apiFetch('/api/history?days=7'))
-      .then(data => {
-        stats(data);
-        weekStrip(data);
-        recentMeals(data.recent_meals);
-        if (typeof Chart === 'undefined') return;  // 圖表套件載入失敗時，仍顯示其他內容
-        lineChart(data);
-        carbsChart(data);
-      })
-      .catch(err => {
-        if (err.status === 401 || err.message === '角色不符') return;
-        document.getElementById('recentMeals').textContent = `讀取資料失敗：${err.message}`;
+    // 修改視窗：跟健康日誌同樣的四個欄位，一樣全部必填
+    function editRecord(id) {
+      const r = records.find(x => x.id === id);
+      const el = document.createElement('div');
+      el.className = 'modal fade';
+      el.tabIndex = -1;
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      const radio = (name, val, label, checked) => `
+        <div class="choice"><input type="radio" id="e-${name}-${val}" name="e-${name}" value="${val}"${checked ? ' checked' : ''}>
+          <label for="e-${name}-${val}">${label}</label></div>`;
+      el.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content app-modal">
+            <form class="modal-body" novalidate>
+              <h2 class="app-modal-title">修改 ${escapeHtml(describe(r))} 的紀錄</h2>
+              <div class="field">
+                <span class="field-label">運動超過 30 分鐘</span>
+                <div class="choice-group">${radio('ex', 'yes', '有', r.exercise_done === 1)}${radio('ex', 'no', '沒有', r.exercise_done === 0)}</div>
+              </div>
+              <div class="row g-3 field">
+                <div class="col-6">
+                  <label class="field-label" for="e-pre">飯前血糖</label>
+                  <div class="input-unit"><input type="number" inputmode="numeric" class="form-control" id="e-pre" value="${r.glucose_pre ?? ''}"><span class="unit">mg/dL</span></div>
+                </div>
+                <div class="col-6">
+                  <label class="field-label" for="e-post">飯後血糖</label>
+                  <div class="input-unit"><input type="number" inputmode="numeric" class="form-control" id="e-post" value="${r.glucose_post ?? ''}"><span class="unit">mg/dL</span></div>
+                </div>
+              </div>
+              <div class="field">
+                <span class="field-label">吃滿三碗蔬菜</span>
+                <div class="choice-group">${radio('veg', 'yes', '有', r.veggie_done === 1)}${radio('veg', 'no', '還沒', r.veggie_done === 0)}</div>
+              </div>
+              <div class="form-msg" role="alert"></div>
+            </form>
+            <div class="app-modal-actions">
+              <button type="button" class="btn-app btn-ghost" data-act="cancel">取消</button>
+              <button type="button" class="btn-app" data-act="save">儲存修改</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.appendChild(el);
+      const modal = new bootstrap.Modal(el);
+      const msg = el.querySelector('.form-msg');
+      let changed = false;
+      el.querySelector('[data-act=cancel]').addEventListener('click', () => modal.hide());
+      el.querySelector('[data-act=save]').addEventListener('click', async () => {
+        const get = n => (el.querySelector(`input[name=e-${n}]:checked`) || {}).value;
+        const body = {
+          exercise: get('ex'), veggie: get('veg'),
+          glucose_pre: el.querySelector('#e-pre').value.trim(),
+          glucose_post: el.querySelector('#e-post').value.trim()
+        };
+        const missing = [];
+        if (!body.exercise) missing.push('運動');
+        if (!body.glucose_pre) missing.push('飯前血糖');
+        if (!body.glucose_post) missing.push('飯後血糖');
+        if (!body.veggie) missing.push('三碗蔬菜');
+        if (missing.length) {
+          msg.textContent = '請填寫：' + missing.join('、');
+          msg.className = 'form-msg is-error';
+          return;
+        }
+        try {
+          await apiFetch(`/api/logs/${id}`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+          });
+          changed = true;
+          modal.hide();
+        } catch (err) {
+          msg.textContent = err.message;
+          msg.className = 'form-msg is-error';
+        }
       });
+      el.addEventListener('hidden.bs.modal', async () => {
+        el.remove();
+        if (changed) {
+          await load(currentDays);
+          await noticeDialog({ title: '已更新', message: `${describe(r)} 的紀錄已修改，統計與圖表也跟著更新了。` });
+        }
+      });
+      modal.show();
+    }
+
+    function showMsg(text) {
+      const m = document.getElementById('loadMsg');
+      m.textContent = text;
+      m.className = text ? 'form-msg is-error' : 'form-msg';
+    }
+
+    // 快速切換天數時，較早送出的請求可能較晚回來；只採用最後一次的結果
+    let loadSeq = 0;
+
+    async function load(days) {
+      const seq = ++loadSeq;
+      currentDays = days;
+      showMsg('');
+      try {
+        const d = await apiFetch(`/api/history?days=${days}`);
+        if (seq !== loadSeq) return;
+        document.getElementById('rangeText').textContent =
+          `最近 ${days} 天（${shortDate(d.start)}–${shortDate(d.end)}）`;
+        HistoryView.render(d);
+        renderRecords(d.records);
+      } catch (err) {
+        if (seq !== loadSeq || err.status === 401) return;
+        showMsg(`讀取資料失敗：${err.message}`);
+      }
+    }
+
+    requireLogin('patient').then(() => {
+      load(7);
+      HistoryView.onRangeChange(load);
+    }).catch(() => {});
   </script>
 </body>
 

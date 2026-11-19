@@ -8,6 +8,7 @@
     python3 seed_demo.py --reset    # 先清掉舊的示範資料再重建
 """
 import argparse
+import os
 import json
 import random
 import shutil
@@ -19,16 +20,18 @@ from pathlib import Path
 
 from werkzeug.security import generate_password_hash
 
-from nutrition import nutrition
+from nutrition import count_dishes, load_food_info, nutrition
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BACKEND_DIR.parent
-DB_PATH = BACKEND_DIR / "instance" / "health.db"
-UPLOAD_DIR = BACKEND_DIR / "uploads"
+# 與後端相同的位置與環境變數
+DB_PATH = Path(os.environ.get("SHD_DB", BACKEND_DIR / "instance" / "health.db"))
+UPLOAD_DIR = Path(os.environ.get("SHD_UPLOADS", BACKEND_DIR / "uploads"))
 PHOTO_DIR = PROJECT_DIR / "training" / "foodgroups" / "test_tray_todo" / "images"
 DETS_PATH = BACKEND_DIR / "demo_detections.json"
 
 MEALS = ("早餐", "午餐", "晚餐")
+MEAL_TIME = {"早餐": "08:00:00", "午餐": "12:30:00", "晚餐": "18:30:00"}  # 紀錄時間，讓同一天的排序合理
 
 # 五位示範病人：帳號、姓名、生日、性別、血糖區間、達成率、最後一次記錄距今幾天
 # 血糖以常態分布抽樣，刻意讓部分病人落在控制目標之外，醫護端才看得到需要關注的案例。
@@ -50,7 +53,13 @@ SKIP_CHANCE = 0.15  # 其餘日子偶爾漏記，比每天都滿分真實
 
 
 def connect():
+    # 剛 clone 下來、還沒啟動過後端時資料庫不存在，依 schema.sql 建立（與後端 init_db 相同）
+    fresh = not DB_PATH.exists()
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(DB_PATH)
+    if fresh:
+        db.executescript((BACKEND_DIR / "schema.sql").read_text(encoding="utf-8"))
+        print(f"已建立新的資料庫 {DB_PATH}")
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA foreign_keys = ON")
     return db
@@ -85,12 +94,10 @@ def reset(db):
     print(f"已清除 {len(ids)} 個示範帳號、{removed} 張照片")
 
 
-def servings_from(dets):
-    """把辨識框數量換算成份數：同一類別每一塊算一份，與使用者端的預設一致。"""
-    counts = {}
-    for d in dets:
-        counts[d[0]] = counts.get(d[0], 0) + 1
-    return counts
+def servings_from(dets, food_info):
+    """與使用者端相同的預設份數：每一處食物 × 該類別的預設份數（見 detector.summarize）。"""
+    counts = count_dishes((d[0], d[3:7]) for d in dets)
+    return {k: food_info[k]["default_servings"] * n for k, n in counts.items()}
 
 
 def backfill(db, username, rng):
@@ -168,7 +175,13 @@ def main():
 
     rng = random.Random(args.seed)
     dets_by_photo = json.loads(DETS_PATH.read_text(encoding="utf-8"))
-    photo_names = sorted(dets_by_photo)
+    food_info = load_food_info()
+    # 照片來源資料夾不在 git 裡（training/foodgroups 被 .gitignore 排除）；
+    # 沒有的話仍可建立示範病人，只是不附餐點照片
+    photo_names = sorted(n for n in dets_by_photo if (PHOTO_DIR / n).exists())
+    have_photos = bool(photo_names)
+    if not have_photos:
+        print(f"找不到示範照片（{PHOTO_DIR}），示範紀錄將只有血糖、運動、蔬菜，不含餐點照片。")
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     db = connect()
@@ -217,19 +230,19 @@ def main():
                 pre = round(max(55, rng.gauss(*spec["pre"])))
                 post = round(max(70, rng.gauss(*spec["post"])))
 
-                photo = photo_names[photo_i % len(photo_names)]
-                photo_i += 1
-                stored = f"{uuid.uuid4().hex}.jpg"
-                src = PHOTO_DIR / photo
-                if src.exists():
-                    shutil.copy2(src, UPLOAD_DIR / stored)
+                # 有照片才產生餐點（餐別、份數、醣類、辨識框）；
+                # 找不到照片時只留血糖、運動、蔬菜，不做出「有醣類卻沒有照片」的餐點
+                stored, dets, counts, totals, meal_type = None, [], {}, None, None
+                if have_photos:
+                    photo = photo_names[photo_i % len(photo_names)]
+                    photo_i += 1
+                    stored = f"{uuid.uuid4().hex}.jpg"
+                    shutil.copy2(PHOTO_DIR / photo, UPLOAD_DIR / stored)
                     n_photos += 1
-                else:
-                    stored = None
-
-                dets = dets_by_photo[photo]["detections"]
-                counts = servings_from(dets)
-                totals = nutrition(counts)
+                    dets = dets_by_photo[photo]["detections"]
+                    counts = servings_from(dets, food_info)
+                    totals = nutrition(counts)
+                    meal_type = meal
 
                 cur = db.execute(
                     """INSERT INTO health_logs
@@ -237,11 +250,12 @@ def main():
                         veggie_done, photo_filename, grain_servings, veg_servings, protein_servings,
                         carbs_g, total_kcal, created_at)
                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (uid, day.isoformat(), meal, exercise, pre, post, veggie, stored,
-                     counts.get("grains_starches", 0),
-                     counts.get("vegetables", 0),
-                     counts.get("protein", 0),
-                     totals["carbs_g"], totals["kcal"], f"{day.isoformat()} 12:00:00"))
+                    (uid, day.isoformat(), meal_type, exercise, pre, post, veggie, stored,
+                     counts.get("grains_starches") if stored else None,
+                     counts.get("vegetables") if stored else None,
+                     counts.get("protein") if stored else None,
+                     totals and totals["carbs_g"], totals and totals["kcal"],
+                     f"{day.isoformat()} {MEAL_TIME[meal]}"))
                 log_id = cur.lastrowid
                 n_logs += 1
                 if stored:

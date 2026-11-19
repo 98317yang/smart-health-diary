@@ -74,10 +74,23 @@ def main():
         # 2. 檢視範圍內的天數
         in_window = {r["log_date"] for r in rows
                      if start.isoformat() <= r["log_date"] <= end.isoformat()}
+        notes = []
         if rows and len(in_window) < MIN_DAYS:
             issues.append(f"最近 {args.days} 天只有 {len(in_window)} 天有紀錄（至少要 {MIN_DAYS} 天）")
         if not rows:
-            issues.append("完全沒有紀錄")
+            notes.append("還沒有任何紀錄")  # 剛註冊的病人本來就會這樣，只提示、不算問題
+
+        # 未來日期的紀錄在任何畫面都看不到
+        future = [r["log_date"] for r in rows if r["log_date"] > end.isoformat()]
+        if future:
+            issues.append(f"{len(future)} 筆日期在未來（{future[0]} 起）")
+
+        # 餐點資料必須跟照片一起出現：有份數或醣類卻沒有照片，表示是殘缺的餐點
+        no_photo_meal = [r["log_date"] for r in rows if not r["photo_filename"] and (
+            r["carbs_g"] is not None or r["meal_type"] is not None
+            or any(r[c] is not None for c in ("grain_servings", "veg_servings", "protein_servings")))]
+        if no_photo_meal:
+            issues.append(f"{len(no_photo_meal)} 筆有餐別、份數或醣類，卻沒有照片（{no_photo_meal[0]} 起）")
 
         # 3. 照片檔案是否真的存在
         missing_files = [r["photo_filename"] for r in rows
@@ -108,6 +121,8 @@ def main():
         print(f"{mark} {name:<8}{extra}")
         for i in issues:
             print(f"      - {i}")
+        for n in notes:
+            print(f"      · {n}")
         problems += len(issues)
 
         if args.fix and blank:

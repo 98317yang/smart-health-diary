@@ -108,7 +108,7 @@
           <div class="stat-value" id="statTotal">—</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label"><i class="bi bi-journal-check"></i>近 7 天有記錄</div>
+          <div class="stat-label"><i class="bi bi-journal-check"></i><span id="activeLabel">近 7 天有記錄</span></div>
           <div class="stat-value" id="statActive">—</div>
         </div>
         <div class="stat-card stat-card-warn">
@@ -145,7 +145,7 @@
     const shortDate = iso => iso.slice(5).replace('-', '/');
     const fmt = v => v === null || v === undefined ? '—' : Math.round(v);
 
-    // 距離最後一筆紀錄多久，用病人看得懂的說法呈現
+    // 距離最後一筆紀錄多久，用口語的說法呈現
     function lastSeen(p) {
       if (p.last_log_date === null) return '從未記錄';
       const d = p.days_since_log;
@@ -211,8 +211,10 @@
         document.getElementById('rangeText').textContent =
           `最近 ${d.days} 天（${shortDate(d.start)}–${shortDate(d.end)}）`;
         document.getElementById('statTotal').innerHTML = `${d.patients.length}<small>人</small>`;
-        const active = d.patients.filter(p => !p.inactive).length;
+        // 區間內有任何一天的紀錄就算（不是「沒有久未記錄」，兩者天數門檻不同）
+        const active = d.patients.filter(p => p.logged_days > 0).length;
         document.getElementById('statActive').innerHTML = `${active}<small>人</small>`;
+        document.getElementById('activeLabel').textContent = `近 ${d.days} 天有記錄`;
         const watch = d.patients.filter(p => p.inactive || p.glucose_flags.length).length;
         document.getElementById('statWatch').innerHTML = `${watch}<small>人</small>`;
         render();

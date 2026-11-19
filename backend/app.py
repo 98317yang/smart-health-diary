@@ -3,6 +3,7 @@
 啟動時載入一次 YOLOv9 模型，提供：
   註冊 / 登入 / 登出      POST /api/register, /api/login, /api/logout；GET /api/me
   新增健康日誌（含照片）  POST /api/logs
+  修改／刪除一筆日誌      PATCH、DELETE /api/logs/<id>
   確認／修改餐點份數      PUT  /api/logs/<id>/servings
   歷史統計               GET  /api/history?days=7
   餐點照片               GET  /api/photos/<檔名>（本人或醫護人員才能取用）
@@ -46,6 +47,9 @@ MEAL_TYPES = {"早餐", "午餐", "晚餐"}
 GLUCOSE_REF = {"pre_low": 80, "pre_high": 130, "post_low": 80, "post_high": 160}
 # 超過這個天數沒有任何紀錄，就在病人清單標示出來
 INACTIVE_DAYS = 3
+# 日誌日期只能是今天或往前這麼多天內（含今天）；與介面最長的檢視區間一致，
+# 否則補記的資料會落在任何畫面都看不到的地方
+LOG_BACKDATE_DAYS = 30
 
 log = logging.getLogger("shd")
 app = Flask(__name__, static_folder=None)
@@ -140,9 +144,15 @@ def staff_required(view):
 
 
 def parse_bool(value):
+    """是／否欄位；看不懂的值當作沒填，不默默存成「否」。"""
     if value in (None, ""):
         return None
-    return 1 if str(value).lower() in ("1", "yes", "true", "是") else 0
+    v = str(value).strip().lower()
+    if v in ("1", "yes", "true", "是"):
+        return 1
+    if v in ("0", "no", "false", "否"):
+        return 0
+    return None
 
 
 def parse_glucose(value, field):
@@ -155,6 +165,42 @@ def parse_glucose(value, field):
     if not 20 <= v <= 600:
         raise ValueError(f"{field}數值不合理（應介於 20–600 mg/dl）")
     return v
+
+
+def parse_log_date(value):
+    """日誌日期：不能是未來，也不能早於 LOG_BACKDATE_DAYS 天前。"""
+    today = date.today()
+    try:
+        d = date.fromisoformat(value) if value else today
+    except ValueError:
+        raise ValueError("日期格式錯誤")
+    if d > today:
+        raise ValueError("不能記錄未來的日期")
+    if d < today - timedelta(days=LOG_BACKDATE_DAYS - 1):
+        raise ValueError(f"只能補記最近 {LOG_BACKDATE_DAYS} 天內的紀錄")
+    return d.isoformat()
+
+
+def parse_entry(form):
+    """運動、飯前血糖、飯後血糖、三碗蔬菜四項一律必填；回傳 (欄位, 錯誤訊息)。
+
+    缺一欄位的紀錄在醫護端只會變成無法判讀的空格，也會讓達成率的分母失真。
+    """
+    try:
+        values = {
+            "glucose_pre": parse_glucose(form.get("glucose_pre"), "飯前血糖"),
+            "glucose_post": parse_glucose(form.get("glucose_post"), "飯後血糖"),
+        }
+    except ValueError as e:
+        return None, str(e)
+    values["exercise_done"] = parse_bool(form.get("exercise"))
+    values["veggie_done"] = parse_bool(form.get("veggie"))
+    missing = [zh for key, zh in (("exercise_done", "運動"), ("glucose_pre", "飯前血糖"),
+                                  ("glucose_post", "飯後血糖"), ("veggie_done", "三碗蔬菜"))
+               if values[key] is None]
+    if missing:
+        return None, "請填寫：" + "、".join(missing)
+    return values, None
 
 
 def servings_dict(groups):
@@ -264,23 +310,13 @@ def me():
 
 
 # ---------- 健康日誌 ----------
-MEAL_COLUMNS = ("meal_type", "photo_filename", "grain_servings", "veg_servings",
-                "protein_servings", "carbs_g", "total_kcal")
+def remove_log(db, row):
+    """刪除一整筆日誌（血糖、運動、蔬菜、餐點照片是同一次填寫的，視為一個整體）。
 
-
-def remove_meal(db, row):
-    """移除一筆紀錄中的餐點資料。
-
-    同一次送出的血糖、運動、蔬菜自評會保留；如果這筆紀錄只有餐點，就整筆刪除。
-    回傳要刪除的照片檔名（等資料庫 commit 之後再刪檔）。
+    回傳要刪除的照片檔名，等資料庫 commit 之後再刪檔。
     """
     db.execute("DELETE FROM detections WHERE log_id = ?", (row["id"],))
-    has_other = any(row[c] is not None for c in ("exercise_done", "glucose_pre", "glucose_post", "veggie_done"))
-    if has_other:
-        db.execute(f"UPDATE health_logs SET {', '.join(c + ' = NULL' for c in MEAL_COLUMNS)} WHERE id = ?",
-                   (row["id"],))
-    else:
-        db.execute("DELETE FROM health_logs WHERE id = ?", (row["id"],))
+    db.execute("DELETE FROM health_logs WHERE id = ?", (row["id"],))
     return row["photo_filename"]
 
 
@@ -296,18 +332,27 @@ def create_log():
     if current_user()["role"] == "staff":
         return error("醫護帳號不記錄個人日誌", 403)
     form = request.form
+    # 所有欄位都先檢查完，才去跑辨識與存照片；
+    # 否則欄位不齊時照片已經寫進硬碟，會變成沒有紀錄在用的檔案
     try:
-        log_date = date.fromisoformat(form.get("date") or date.today().isoformat()).isoformat()
-        glucose_pre = parse_glucose(form.get("glucose_pre"), "飯前血糖")
-        glucose_post = parse_glucose(form.get("glucose_post"), "飯後血糖")
+        log_date = parse_log_date(form.get("date"))
     except ValueError as e:
-        return error(str(e) if "血糖" in str(e) else "日期格式錯誤")
+        return error(str(e))
+    entry, problem = parse_entry(form)
+    if problem:
+        return error(problem)
     meal_type = form.get("meal_type") or None
     if meal_type is not None and meal_type not in MEAL_TYPES:
         return error("餐別必須是早餐、午餐或晚餐")
 
     photo = request.files.get("photo")
     has_photo = bool(photo and photo.filename)
+    if has_photo and meal_type is None:
+        return error("請選擇這是哪一餐")
+    if has_photo and Path(photo.filename).suffix.lower() not in ALLOWED_EXT:
+        return error("只接受 JPG、PNG、WEBP、BMP 圖片")
+    if not has_photo:
+        meal_type = None  # 沒有照片時不記錄餐別
     replace = form.get("replace") == "1"
     db = get_db()
     existing = []
@@ -322,8 +367,6 @@ def create_log():
     detections, groups, photo_filename, image_size = [], [], None, None
     if has_photo:
         ext = Path(photo.filename).suffix.lower()
-        if ext not in ALLOWED_EXT:
-            return error("只接受 JPG、PNG、WEBP、BMP 圖片")
         if detector is None:
             return error("伺服器未載入辨識模型，暫時無法分析照片", 503)
         image_bytes = photo.read()
@@ -336,27 +379,18 @@ def create_log():
         photo_filename = f"{uuid.uuid4().hex}{ext}"
         (CONFIG["UPLOAD_DIR"] / photo_filename).write_bytes(image_bytes)
 
-    exercise = parse_bool(form.get("exercise"))
-    veggie = parse_bool(form.get("veggie"))
-    # 一筆日誌要嘛完整，要嘛不存。缺一欄位的紀錄在醫護端只會變成無法判讀的空格，
-    # 也會讓達成率的分母失真，所以四個欄位一律必填。
-    missing = [name for name, v in (("運動", exercise), ("飯前血糖", glucose_pre),
-                                    ("飯後血糖", glucose_post), ("三碗蔬菜", veggie)) if v is None]
-    if missing:
-        return error("請填寫：" + "、".join(missing))
-    fields = [glucose_pre, glucose_post, exercise, veggie, photo_filename]
-
     servings = servings_dict(groups)
     totals = nutrition(servings) if photo_filename else None
-    # 照片辨識成功後才移除舊的餐點，避免新照片失敗時舊紀錄也不見
-    old_photos = [remove_meal(db, row) for row in existing]
+    # 照片辨識成功後才刪除被取代的紀錄，避免新照片失敗時舊紀錄也不見。
+    # 取代是整筆取代：舊的血糖、運動、蔬菜也一起換掉，不會留下來跟新數值混在一起平均
+    old_photos = [remove_log(db, row) for row in existing]
     cur = db.execute(
         """INSERT INTO health_logs (user_id, log_date, meal_type, exercise_done, glucose_pre,
                                     glucose_post, veggie_done, photo_filename, total_kcal,
                                     grain_servings, veg_servings, protein_servings, carbs_g)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (session["user_id"], log_date, meal_type, exercise, glucose_pre, glucose_post,
-         veggie, photo_filename, totals and totals["kcal"],
+        (session["user_id"], log_date, meal_type, entry["exercise_done"], entry["glucose_pre"],
+         entry["glucose_post"], entry["veggie_done"], photo_filename, totals and totals["kcal"],
          *[servings.get(g) for g in GROUP_COLUMNS], totals and totals["carbs_g"]))
     db.executemany(
         "INSERT INTO detections (log_id, label, label_zh, confidence, x1, y1, x2, y2) "
@@ -372,17 +406,37 @@ def create_log():
 
 @app.delete("/api/logs/<int:log_id>")
 @login_required
-def delete_meal(log_id):
-    """刪除一筆餐點紀錄（同次送出的血糖、運動資料會保留）。"""
+def delete_log(log_id):
+    """刪除一整筆日誌（含照片）；只能刪自己的。"""
     db = get_db()
     row = db.execute("SELECT * FROM health_logs WHERE id = ? AND user_id = ?",
                      (log_id, session["user_id"])).fetchone()
-    if row is None or row["photo_filename"] is None:
-        return error("找不到這筆餐點紀錄", 404)
-    photo = remove_meal(db, row)
+    if row is None:
+        return error("找不到這筆紀錄", 404)
+    photo = remove_log(db, row)
     db.commit()
     delete_photos([photo])
     return jsonify({"message": "已刪除"})
+
+
+@app.patch("/api/logs/<int:log_id>")
+@login_required
+def update_log(log_id):
+    """修改一筆日誌的運動、血糖、蔬菜（例如血糖打錯）；四項同樣必填。餐點份數另由 /servings 修改。"""
+    db = get_db()
+    row = db.execute("SELECT id FROM health_logs WHERE id = ? AND user_id = ?",
+                     (log_id, session["user_id"])).fetchone()
+    if row is None:
+        return error("找不到這筆紀錄", 404)
+    data = request.get_json(silent=True) or {}
+    entry, problem = parse_entry(data)
+    if problem:
+        return error(problem)
+    db.execute("""UPDATE health_logs SET exercise_done = ?, glucose_pre = ?, glucose_post = ?, veggie_done = ?
+                  WHERE id = ?""",
+               (entry["exercise_done"], entry["glucose_pre"], entry["glucose_post"], entry["veggie_done"], log_id))
+    db.commit()
+    return jsonify({"message": "已更新", **entry})
 
 
 @app.put("/api/logs/<int:log_id>/servings")
@@ -451,14 +505,17 @@ def history_payload(db, user_id, days):
         answered = [d[key] for d in daily.values() if d[key] is not None]
         return {"done": sum(answered), "answered_days": len(answered)}
 
-    recent = db.execute(
-        """SELECT l.id, l.log_date, l.meal_type, l.total_kcal, l.carbs_g, l.photo_filename,
+    # 餐點與逐筆紀錄都只取這個區間內的，跟上面的統計、圖表一致
+    records = db.execute(
+        """SELECT l.id, l.log_date, l.meal_type, l.exercise_done, l.glucose_pre, l.glucose_post,
+                  l.veggie_done, l.total_kcal, l.carbs_g, l.photo_filename,
                   l.grain_servings, l.veg_servings, l.protein_servings,
                   COUNT(d.id) AS n_detected
            FROM health_logs l LEFT JOIN detections d ON d.log_id = l.id
-           WHERE l.user_id = ? AND l.photo_filename IS NOT NULL
-           GROUP BY l.id ORDER BY l.log_date DESC, l.created_at DESC LIMIT 10""",
-        (user_id,)).fetchall()
+           WHERE l.user_id = ? AND l.log_date BETWEEN ? AND ?
+           GROUP BY l.id ORDER BY l.log_date DESC, l.created_at DESC, l.id DESC""",
+        (user_id, start.isoformat(), end.isoformat())).fetchall()
+    records = [dict(r) for r in records]
 
     return {
         "start": start.isoformat(), "end": end.isoformat(),
@@ -470,7 +527,8 @@ def history_payload(db, user_id, days):
         "veggie": rate("veggie"),
         "exercise_daily": [d["exercise"] for d in daily.values()],
         "veggie_daily": [d["veggie"] for d in daily.values()],
-        "recent_meals": [dict(r) for r in recent],
+        "records": records,
+        "recent_meals": [r for r in records if r["photo_filename"]],
     }
 
 
@@ -532,7 +590,9 @@ def staff_patients():
         (start.isoformat(), end.isoformat())).fetchall()
     stats = {}
     for r in per_day:
-        d = stats.setdefault(r["user_id"], {"pre": [], "post": [], "exercise": [], "veggie": [], "meals": 0})
+        d = stats.setdefault(r["user_id"], {"pre": [], "post": [], "exercise": [], "veggie": [], "meals": 0,
+                                            "days": 0})
+        d["days"] += 1
         for key in ("pre", "post"):
             if r[key] is not None:
                 d[key].append(r[key])
@@ -552,7 +612,7 @@ def staff_patients():
 
     out = []
     for u in patients:
-        d = stats.get(u["id"], {"pre": [], "post": [], "exercise": [], "veggie": [], "meals": 0})
+        d = stats.get(u["id"], {"pre": [], "post": [], "exercise": [], "veggie": [], "meals": 0, "days": 0})
         pre, post = avg(d["pre"]), avg(d["post"])
         days_since = (end - date.fromisoformat(u["last_log_date"])).days if u["last_log_date"] else None
         out.append({
@@ -564,6 +624,7 @@ def staff_patients():
             "exercise_done": sum(d["exercise"]), "exercise_days": len(d["exercise"]),
             "veggie_done": sum(d["veggie"]), "veggie_days": len(d["veggie"]),
             "meals": d["meals"],
+            "logged_days": d["days"],  # 區間內有紀錄的天數
             "inactive": days_since is None or days_since >= INACTIVE_DAYS,
         })
     return jsonify({"days": days, "start": start.isoformat(), "end": end.isoformat(),
@@ -634,6 +695,15 @@ def no_store_api(resp):
 @app.errorhandler(413)
 def too_large(_e):
     return error("照片太大，請小於 10 MB", 413)
+
+
+@app.errorhandler(500)
+def server_error(e):
+    """API 發生未預期的錯誤時也回 JSON，前端才能顯示中文訊息，而不是一整頁英文錯誤。"""
+    log.exception("未預期的錯誤：%s", getattr(e, "original_exception", e))
+    if request.path.startswith("/api/"):
+        return error("伺服器發生錯誤，請稍後再試", 500)
+    return "伺服器發生錯誤", 500
 
 
 def create_app():
