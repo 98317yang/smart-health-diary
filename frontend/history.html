@@ -159,7 +159,7 @@
       <section class="app-card">
         <div class="card-title-row">
           <span class="card-icon"><i class="bi bi-list-ul"></i></span>
-          <div><h2>這段期間的紀錄</h2><p class="card-sub">數字打錯可以按「修改」，整筆不要了可以刪除</p></div>
+          <div><h2>這段期間的紀錄</h2><p class="card-sub">依日期排列，最近的在最上面</p></div>
         </div>
         <div id="records" class="empty-state">載入中…</div>
       </section>
@@ -179,11 +179,14 @@
     let currentDays = 7;
     let records = [];
 
-    const yesNo = v => v === null || v === undefined ? '—' : v ? '有' : '沒有';
     const num = v => v === null || v === undefined ? '—' : Math.round(v);
+    const flag = (label, v) => v === null || v === undefined
+      ? `<span class="day-flag">${label} <b>－</b></span>`
+      : `<span class="day-flag ${v ? 'is-done' : 'is-miss'}">${label} <i class="bi bi-${v ? 'check-lg' : 'x-lg'}"></i></span>`;
 
-    // 每一筆紀錄一列：上面是日期與餐別，下面是這次填的數字；手機與電腦都用同一種排法
-    function renderRecords(rows) {
+    // 依日期分組（區塊用 div，模板的 main.css 會幫 section 加上下留白）：運動與蔬菜一天只顯示一次（與上方達成表相同，任一筆「有」就算達成），
+    // 下面每一列是一次填寫的血糖與餐點
+    function renderRecords(rows, d) {
       const box = document.getElementById('records');
       records = rows;
       if (rows.length === 0) {
@@ -191,35 +194,37 @@
         box.textContent = '這段期間還沒有紀錄。';
         return;
       }
-      box.className = 'record-list';
-      box.innerHTML = rows.map(r => {
-        const when = `${shortDate(r.log_date)}（週${weekday(r.log_date)}）`;
-        const meal = r.photo_filename
-          ? `${escapeHtml(r.meal_type || '餐點')}<span class="rec-tag"><i class="bi bi-camera"></i>有照片</span>`
-          : '<span class="rec-muted">沒有餐點照片</span>';
-        const carbs = r.photo_filename && r.carbs_g !== null ? `<span>醣類 <b>${Math.round(r.carbs_g)}</b> g</span>` : '';
+      const byDay = new Map();
+      for (const r of rows) {                       // API 由新到舊；同一天裡改成由早到晚
+        if (!byDay.has(r.log_date)) byDay.set(r.log_date, []);
+        byDay.get(r.log_date).unshift(r);
+      }
+      box.className = 'day-list';
+      box.innerHTML = [...byDay].map(([day, list]) => {
+        const i = d.dates.indexOf(day);
+        const rowsHtml = list.map(r => `
+          <div class="rec-row">
+            <div class="rec-meal">${r.photo_filename
+              ? escapeHtml(r.meal_type || '餐點')
+              : '<span class="rec-muted" title="這次沒有拍餐點照片">－</span>'}</div>
+            <div class="rec-vals">
+              <span>飯前 <b>${num(r.glucose_pre)}</b></span>
+              <span>飯後 <b>${num(r.glucose_post)}</b></span>
+              ${r.photo_filename && r.carbs_g !== null ? `<span>醣類 <b>${Math.round(r.carbs_g)}</b> g</span>` : ''}
+            </div>
+            <button type="button" class="btn-app btn-ghost btn-sm" data-edit="${r.id}"
+              aria-label="修改 ${escapeHtml(describe(r))} 的紀錄">修改</button>
+          </div>`).join('');
         return `
-          <article class="record-item">
-            <div class="rec-main">
-              <div class="rec-title"><strong>${escapeHtml(when)}</strong> ${meal}</div>
-              <div class="rec-values">
-                <span>飯前 <b>${num(r.glucose_pre)}</b></span>
-                <span>飯後 <b>${num(r.glucose_post)}</b></span>
-                <span>運動 <b>${yesNo(r.exercise_done)}</b></span>
-                <span>三碗蔬菜 <b>${yesNo(r.veggie_done)}</b></span>
-                ${carbs}
-              </div>
+          <div class="day-group">
+            <div class="day-head">
+              <strong>${shortDate(day)}（週${weekday(day)}）</strong>
+              <div class="day-flags">${flag('運動', i >= 0 ? d.exercise_daily[i] : null)}${flag('三碗蔬菜', i >= 0 ? d.veggie_daily[i] : null)}</div>
             </div>
-            <div class="rec-actions">
-              <button type="button" class="btn-app btn-ghost btn-sm" data-edit="${r.id}">
-                <i class="bi bi-pencil"></i>修改</button>
-              <button type="button" class="icon-btn" data-del="${r.id}"
-                aria-label="刪除 ${escapeHtml(when)} 的紀錄" title="刪除這筆紀錄"><i class="bi bi-trash3"></i></button>
-            </div>
-          </article>`;
+            ${rowsHtml}
+          </div>`;
       }).join('');
       box.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => editRecord(+b.dataset.edit)));
-      box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => deleteRecord(+b.dataset.del)));
     }
 
     function describe(r) {
@@ -284,13 +289,18 @@
               <button type="button" class="btn-app btn-ghost" data-act="cancel">取消</button>
               <button type="button" class="btn-app" data-act="save">儲存修改</button>
             </div>
+            <button type="button" class="link-danger-btn" data-act="delete">
+              <i class="bi bi-trash3"></i>刪除這筆紀錄</button>
           </div>
         </div>`;
       document.body.appendChild(el);
       const modal = new bootstrap.Modal(el);
       const msg = el.querySelector('.form-msg');
       let changed = false;
+      let wantDelete = false;
       el.querySelector('[data-act=cancel]').addEventListener('click', () => modal.hide());
+      // 先關掉這個視窗再問要不要刪除（兩個視窗疊在一起，長輩容易按錯）
+      el.querySelector('[data-act=delete]').addEventListener('click', () => { wantDelete = true; modal.hide(); });
       el.querySelector('[data-act=save]').addEventListener('click', async () => {
         const get = n => (el.querySelector(`input[name=e-${n}]:checked`) || {}).value;
         const body = {
@@ -321,6 +331,10 @@
       });
       el.addEventListener('hidden.bs.modal', async () => {
         el.remove();
+        if (wantDelete) {
+          await deleteRecord(id);
+          return;
+        }
         if (changed) {
           await load(currentDays);
           await noticeDialog({ title: '已更新', message: `${describe(r)} 的紀錄已修改，統計與圖表也跟著更新了。` });
@@ -348,7 +362,7 @@
         document.getElementById('rangeText').textContent =
           `最近 ${days} 天（${shortDate(d.start)}–${shortDate(d.end)}）`;
         HistoryView.render(d);
-        renderRecords(d.records);
+        renderRecords(d.records, d);
       } catch (err) {
         if (seq !== loadSeq || err.status === 401) return;
         showMsg(`讀取資料失敗：${err.message}`);
