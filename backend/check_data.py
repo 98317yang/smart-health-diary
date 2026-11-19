@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """檢查資料庫裡的健康日誌是否完整、合理。
 
-每一筆日誌都應該是完整的：運動、飯前血糖、飯後血糖、三碗蔬菜四項都要有值。
+每一筆日誌都應該是完整的：屬於早餐、午餐或晚餐其中一餐（同一天每一餐只有一筆），
+運動、飯前血糖、飯後血糖、三碗蔬菜四項都要有值。
 缺值的紀錄在醫護端只會變成無法判讀的空格，也會讓達成率的分母失真。
 
     python backend/check_data.py           # 檢查並列出問題
@@ -85,12 +86,33 @@ def main():
         if future:
             issues.append(f"{len(future)} 筆日期在未來（{future[0]} 起）")
 
-        # 餐點資料必須跟照片一起出現：有份數或醣類卻沒有照片，表示是殘缺的餐點
+        # 每一筆都要有餐別；同一天每一餐只能有一筆（一天最多三筆）
+        no_meal = [r["log_date"] for r in rows if r["meal_type"] is None]
+        if no_meal:
+            issues.append(f"{len(no_meal)} 筆沒有餐別（{no_meal[0]} 起）")
+        seen, dup = set(), []
+        for r in rows:
+            if r["meal_type"] is None:
+                continue
+            key = (r["log_date"], r["meal_type"])
+            if key in seen:
+                dup.append(f"{key[0]} {key[1]}")
+            seen.add(key)
+        if dup:
+            issues.append(f"{len(dup)} 處同一天同一餐有兩筆以上（{dup[0]} 起）")
+        per_day = {}
+        for r in rows:
+            per_day[r["log_date"]] = per_day.get(r["log_date"], 0) + 1
+        over = sorted(d for d, n in per_day.items() if n > 3)
+        if over:
+            issues.append(f"{len(over)} 天超過三筆紀錄（{over[0]} 起）")
+
+        # 份數、醣類必須跟照片一起出現：沒有照片卻有份數或醣類，表示是殘缺的餐點
         no_photo_meal = [r["log_date"] for r in rows if not r["photo_filename"] and (
-            r["carbs_g"] is not None or r["meal_type"] is not None
+            r["carbs_g"] is not None
             or any(r[c] is not None for c in ("grain_servings", "veg_servings", "protein_servings")))]
         if no_photo_meal:
-            issues.append(f"{len(no_photo_meal)} 筆有餐別、份數或醣類，卻沒有照片（{no_photo_meal[0]} 起）")
+            issues.append(f"{len(no_photo_meal)} 筆有份數或醣類，卻沒有照片（{no_photo_meal[0]} 起）")
 
         # 3. 照片檔案是否真的存在
         missing_files = [r["photo_filename"] for r in rows

@@ -195,18 +195,22 @@
         return;
       }
       const byDay = new Map();
-      for (const r of rows) {                       // API 由新到舊；同一天裡改成由早到晚
+      const MEAL_ORDER = { 早餐: 0, 午餐: 1, 晚餐: 2 };
+      for (const r of rows) {                       // 日期由新到舊；同一天依早餐、午餐、晚餐排列
         if (!byDay.has(r.log_date)) byDay.set(r.log_date, []);
-        byDay.get(r.log_date).unshift(r);
+        byDay.get(r.log_date).push(r);
+      }
+      for (const list of byDay.values()) {
+        list.sort((a, b) => (MEAL_ORDER[a.meal_type] ?? 3) - (MEAL_ORDER[b.meal_type] ?? 3));
       }
       box.className = 'day-list';
       box.innerHTML = [...byDay].map(([day, list]) => {
         const i = d.dates.indexOf(day);
         const rowsHtml = list.map(r => `
           <div class="rec-row">
-            <div class="rec-meal">${r.photo_filename
-              ? escapeHtml(r.meal_type || '餐點')
-              : '<span class="rec-muted" title="這次沒有拍餐點照片">－</span>'}</div>
+            <div class="rec-meal">${r.meal_type
+              ? escapeHtml(r.meal_type)
+              : '<span class="rec-muted" title="舊資料沒有記錄是哪一餐">－</span>'}</div>
             <div class="rec-vals">
               <span>飯前 <b>${num(r.glucose_pre)}</b></span>
               <span>飯後 <b>${num(r.glucose_post)}</b></span>

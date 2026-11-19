@@ -230,9 +230,9 @@ def main():
                 pre = round(max(55, rng.gauss(*spec["pre"])))
                 post = round(max(70, rng.gauss(*spec["post"])))
 
-                # 有照片才產生餐點（餐別、份數、醣類、辨識框）；
+                # 每一筆都屬於某一餐；有照片才產生份數、醣類與辨識框，
                 # 找不到照片時只留血糖、運動、蔬菜，不做出「有醣類卻沒有照片」的餐點
-                stored, dets, counts, totals, meal_type = None, [], {}, None, None
+                stored, dets, counts, totals, meal_type = None, [], {}, None, meal
                 if have_photos:
                     photo = photo_names[photo_i % len(photo_names)]
                     photo_i += 1
@@ -242,7 +242,6 @@ def main():
                     dets = dets_by_photo[photo]["detections"]
                     counts = servings_from(dets, food_info)
                     totals = nutrition(counts)
-                    meal_type = meal
 
                 cur = db.execute(
                     """INSERT INTO health_logs

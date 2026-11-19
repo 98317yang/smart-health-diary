@@ -91,6 +91,14 @@ def init_db():
         for col in ("birthday", "gender"):
             if col not in user_cols:
                 db.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
+        # 同一人同一天同一餐只能有一筆。舊資料庫若已經有重複，建立會失敗：
+        # 不讓整個系統因此無法啟動，記下警告，請用 check_data.py 找出重複的紀錄
+        try:
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_log_meal "
+                       "ON health_logs (user_id, log_date, meal_type)")
+        except sqlite3.IntegrityError:
+            log.warning("資料庫已有同一天同一餐的重複紀錄，暫時無法加上唯一限制；"
+                        "請執行 python backend/check_data.py 查看")
 
 
 # ---------- 模型（只載入一次） ----------
@@ -341,28 +349,25 @@ def create_log():
     entry, problem = parse_entry(form)
     if problem:
         return error(problem)
+    # 每一筆都屬於某一餐（有沒有拍照都一樣），一天每一餐只有一筆，所以一天最多三筆
     meal_type = form.get("meal_type") or None
-    if meal_type is not None and meal_type not in MEAL_TYPES:
+    if meal_type is None:
+        return error("請選擇這是哪一餐")
+    if meal_type not in MEAL_TYPES:
         return error("餐別必須是早餐、午餐或晚餐")
 
     photo = request.files.get("photo")
     has_photo = bool(photo and photo.filename)
-    if has_photo and meal_type is None:
-        return error("請選擇這是哪一餐")
     if has_photo and Path(photo.filename).suffix.lower() not in ALLOWED_EXT:
         return error("只接受 JPG、PNG、WEBP、BMP 圖片")
-    if not has_photo:
-        meal_type = None  # 沒有照片時不記錄餐別
     replace = form.get("replace") == "1"
     db = get_db()
-    existing = []
-    if has_photo and meal_type:
-        existing = db.execute(
-            "SELECT * FROM health_logs WHERE user_id = ? AND log_date = ? AND meal_type = ? "
-            "AND photo_filename IS NOT NULL", (session["user_id"], log_date, meal_type)).fetchall()
-        if existing and not replace:
-            return jsonify({"error": f"{log_date} 的{meal_type}已經記錄過了", "conflict": True,
-                            "date": log_date, "meal_type": meal_type}), 409
+    existing = db.execute(
+        "SELECT * FROM health_logs WHERE user_id = ? AND log_date = ? AND meal_type = ?",
+        (session["user_id"], log_date, meal_type)).fetchall()
+    if existing and not replace:
+        return jsonify({"error": f"{log_date} 的{meal_type}已經記錄過了", "conflict": True,
+                        "date": log_date, "meal_type": meal_type}), 409
 
     detections, groups, photo_filename, image_size = [], [], None, None
     if has_photo:
@@ -384,21 +389,28 @@ def create_log():
     # 照片辨識成功後才刪除被取代的紀錄，避免新照片失敗時舊紀錄也不見。
     # 取代是整筆取代：舊的血糖、運動、蔬菜也一起換掉，不會留下來跟新數值混在一起平均
     old_photos = [remove_log(db, row) for row in existing]
-    cur = db.execute(
-        """INSERT INTO health_logs (user_id, log_date, meal_type, exercise_done, glucose_pre,
-                                    glucose_post, veggie_done, photo_filename, total_kcal,
-                                    grain_servings, veg_servings, protein_servings, carbs_g)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (session["user_id"], log_date, meal_type, entry["exercise_done"], entry["glucose_pre"],
-         entry["glucose_post"], entry["veggie_done"], photo_filename, totals and totals["kcal"],
-         *[servings.get(g) for g in GROUP_COLUMNS], totals and totals["carbs_g"]))
+    try:
+        cur = db.execute(
+            """INSERT INTO health_logs (user_id, log_date, meal_type, exercise_done, glucose_pre,
+                                        glucose_post, veggie_done, photo_filename, total_kcal,
+                                        grain_servings, veg_servings, protein_servings, carbs_g)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (session["user_id"], log_date, meal_type, entry["exercise_done"], entry["glucose_pre"],
+             entry["glucose_post"], entry["veggie_done"], photo_filename, totals and totals["kcal"],
+             *[servings.get(g) for g in GROUP_COLUMNS], totals and totals["carbs_g"]))
+    except sqlite3.IntegrityError:
+        # 同一餐幾乎同時送出兩次（例如連按兩下）時，由資料庫的唯一限制擋下第二筆
+        db.rollback()
+        delete_photos([photo_filename])
+        return jsonify({"error": f"{log_date} 的{meal_type}已經記錄過了", "conflict": True,
+                        "date": log_date, "meal_type": meal_type}), 409
     db.executemany(
         "INSERT INTO detections (log_id, label, label_zh, confidence, x1, y1, x2, y2) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [(cur.lastrowid, d["label"], d["label_zh"], d["confidence"], *d["box"]) for d in detections])
     db.commit()
     delete_photos(old_photos)
-    return jsonify({"message": "已取代原本的紀錄" if old_photos else "已儲存", "replaced": bool(old_photos),
+    return jsonify({"message": "已取代原本的紀錄" if existing else "已儲存", "replaced": bool(existing),
                     "log_id": cur.lastrowid, "detections": detections,
                     "image_size": image_size,
                     "groups": groups, "nutrition": totals}), 201

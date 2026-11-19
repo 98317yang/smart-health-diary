@@ -107,6 +107,21 @@
       <form id="logForm">
         <section class="app-card">
           <div class="card-title-row">
+            <span class="card-icon"><i class="bi bi-clock"></i></span>
+            <div>
+              <h2>這是哪一餐？</h2>
+              <p class="card-sub">每一餐記一次，一天最多三次</p>
+            </div>
+          </div>
+          <div class="choice-group cols-3">
+            <div class="choice"><input type="radio" id="meal-b" name="meal_type" value="早餐"><label for="meal-b">早餐</label></div>
+            <div class="choice"><input type="radio" id="meal-l" name="meal_type" value="午餐"><label for="meal-l">午餐</label></div>
+            <div class="choice"><input type="radio" id="meal-d" name="meal_type" value="晚餐"><label for="meal-d">晚餐</label></div>
+          </div>
+        </section>
+
+        <section class="app-card">
+          <div class="card-title-row">
             <span class="card-icon"><i class="bi bi-person-walking"></i></span>
             <div><h2>今天運動超過 30 分鐘了嗎？</h2></div>
           </div>
@@ -152,16 +167,8 @@
           <div class="card-title-row">
             <span class="card-icon"><i class="bi bi-camera"></i></span>
             <div>
-              <h2>三餐打卡</h2>
-              <p class="card-sub">拍下整個餐盤，系統會幫你找出各類食物</p>
-            </div>
-          </div>
-          <div class="field">
-            <span class="field-label">這是哪一餐？</span>
-            <div class="choice-group cols-3">
-              <div class="choice"><input type="radio" id="meal-b" name="meal_type" value="早餐"><label for="meal-b">早餐</label></div>
-              <div class="choice"><input type="radio" id="meal-l" name="meal_type" value="午餐"><label for="meal-l">午餐</label></div>
-              <div class="choice"><input type="radio" id="meal-d" name="meal_type" value="晚餐"><label for="meal-d">晚餐</label></div>
+              <h2>餐點照片</h2>
+              <p class="card-sub">可以不拍；拍下整個餐盤，系統會幫你找出各類食物</p>
             </div>
           </div>
           <div class="dropzone" id="dropzone">
@@ -392,8 +399,7 @@
       fd.append('date', dateInput.value);
       const file = fileInput.files[0] || null;
       if (!file) fd.delete('photo');
-      const meal = file ? fd.get('meal_type') : null;
-      if (!file) fd.delete('meal_type');  // 沒有照片時不記錄餐別
+      const meal = fd.get('meal_type');   // 每一筆都屬於某一餐，有沒有拍照都要選
       formMsg.className = 'form-msg';
       formMsg.textContent = '';   // 清掉上一次的錯誤訊息，免得之後再顯示時是舊的
 
@@ -411,6 +417,7 @@
       }
 
       const missing = [];
+      if (!meal) missing.push('這是哪一餐');
       if (!fd.get('exercise')) missing.push('今天有沒有運動');
       if (!String(fd.get('glucose_pre') || '').trim()) missing.push('飯前血糖');
       if (!String(fd.get('glucose_post') || '').trim()) missing.push('飯後血糖');
@@ -433,11 +440,12 @@
           data = await submitLog(fd);
         } catch (err) {
           if (err.status !== 409 || !err.body || !err.body.conflict) throw err;
-          // 同一天的同一餐已經有照片紀錄：詢問是否取代
+          // 同一天的同一餐已經有紀錄（一天每一餐只有一筆）：詢問是否整筆取代
           busy(false);
           const ok = await confirmDialog({
             title: '這一餐已經記錄過了',
-            message: `${err.body.date.slice(5).replace('-', '/')} 的${err.body.meal_type}已經有照片紀錄。要用這張新照片取代原本的紀錄嗎？`,
+            message: `${err.body.date.slice(5).replace('-', '/')} 的${err.body.meal_type}已經有一筆紀錄。` +
+              `要用這次填的內容取代嗎？原本那一筆（包括照片，如果有的話）會整筆換掉。`,
             okText: '取代原本的紀錄',
             cancelText: '取消'
           });
