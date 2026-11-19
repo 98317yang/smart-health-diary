@@ -4,6 +4,11 @@
 
 國立臺東大學資訊管理學系 114 級畢業專題（獨立完成，2023/10–2024/11），與台東聖母醫院國科會計畫「健康促進，科技包容」合作。
 
+> **English summary** — A diet and blood-glucose logging web app for people with diabetes, built independently as my undergraduate capstone in Information Management at National Taitung University, in collaboration with a government-funded (NSTC) health-promotion project at St. Mary's Hospital, Taitung.
+> Patients log blood glucose, exercise and a meal photo; a YOLOv9 (GELAN-s) model detects three food groups (grains & starches, vegetables, protein foods), and the patient confirms the servings, which are converted into carbohydrates and calories using Taiwan's food exchange list.
+> Clinical staff get a read-only view that flags patients who have stopped logging or whose glucose is outside the target range.
+> Built with Flask, SQLite and Chart.js; the detector reaches mAP50 0.958 on single-dish test images and 0.661 on held-out whole-tray photos.
+
 年長的糖尿病病友常常因為操作麻煩而無法持續紀錄飲食。本系統讓使用者在記錄血糖、運動的同時，上傳一張餐點照片，由 YOLOv9 模型辨識餐盤中的**全穀雜糧類、蔬菜類、豆魚蛋肉類**，使用者確認份數後換算醣類與熱量，資料存入資料庫後可在歷史頁面查看趨勢。
 
 ## 功能
@@ -14,6 +19,21 @@
 - 歷史資料：可切換 7／14／30 天，顯示統計（運動與蔬菜達成天數、平均血糖、平均每日醣類）、每日達成情形、血糖折線圖、醣類長條圖，以及這段期間的每一筆紀錄；數字打錯可以修改，也可以刪除整筆紀錄
 - 介面以年長使用者為對象：字級與按鈕放大，是／否以整塊按鈕點選，手機與電腦皆可使用
 - 醫護端（唯讀）：病人清單顯示年齡與性別，並標示久未記錄與血糖超出參考範圍者，可逐一查看該病人的血糖趨勢、每日達成情形與餐點照片
+
+## 畫面
+
+截圖使用示範資料（見「示範資料」），照片取自未參與訓練的整盤照片。
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/screenshots/recognition.jpg" alt="上傳餐點照片後，框出各類食物並調整份數"><br>上傳餐點照片後，框出各類食物，由使用者確認份數並換算醣類與熱量</td>
+    <td width="50%" valign="top"><img src="docs/screenshots/history.png" alt="歷史資料：統計、每日達成情形與血糖變化"><br>歷史資料：可切換 7／14／30 天，查看統計、每日達成情形與血糖變化</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/screenshots/staff.png" alt="醫護端病人清單"><br>醫護端病人清單：標示久未記錄與血糖超出控制目標的病人</td>
+    <td width="50%" valign="top" align="center"><img src="docs/screenshots/mobile.png" width="260" alt="手機版健康日誌"><br>手機版健康日誌：字級與按鈕放大，以整塊按鈕作答</td>
+  </tr>
+</table>
 
 ## 系統架構
 
